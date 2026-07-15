@@ -23,14 +23,21 @@ export interface ContainerSeries {
 
 export interface Summary {
   mode: "host" | "demo"
+  version: string
   pollIntervalSeconds: number
+  containerPollIntervalSeconds: number
   historyDays: number
   latest: SystemPoint | null
 }
 
-function bucketSize(fromSec: number, toSec: number, maxPoints: number): number {
+function bucketSize(
+  fromSec: number,
+  toSec: number,
+  maxPoints: number,
+  floorSec: number
+): number {
   const span = Math.max(1, toSec - fromSec)
-  return Math.max(config.pollIntervalSeconds, Math.ceil(span / maxPoints))
+  return Math.max(floorSec, Math.ceil(span / maxPoints))
 }
 
 export function getSummary(): Summary {
@@ -44,7 +51,9 @@ export function getSummary(): Summary {
     .get() as SystemPoint | undefined
   return {
     mode: collectorMode(),
+    version: config.version,
     pollIntervalSeconds: config.pollIntervalSeconds,
+    containerPollIntervalSeconds: config.containerPollIntervalSeconds,
     historyDays: config.historyDays,
     latest: latest ?? null,
   }
@@ -56,7 +65,12 @@ export function getSystemHistory(
   maxPoints = 400
 ): Array<SystemPoint> {
   const db = getDb()
-  const bucket = bucketSize(fromSec, toSec, maxPoints)
+  const bucket = bucketSize(
+    fromSec,
+    toSec,
+    maxPoints,
+    config.pollIntervalSeconds
+  )
   return db
     .prepare(
       `SELECT (ts / $bucket) * $bucket AS ts,
@@ -83,7 +97,12 @@ export function getContainerHistory(
   maxPoints = 200
 ): Array<ContainerSeries> {
   const db = getDb()
-  const bucket = bucketSize(fromSec, toSec, maxPoints)
+  const bucket = bucketSize(
+    fromSec,
+    toSec,
+    maxPoints,
+    config.containerPollIntervalSeconds
+  )
 
   const rows = db
     .prepare(

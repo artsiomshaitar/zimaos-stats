@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { memo, useMemo, useState } from "react"
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 
 import { Card } from "@/components/ui/card"
@@ -75,7 +75,7 @@ function AppIcon({ name, icon }: { name: string; icon: string | null }) {
   )
 }
 
-export function AppsPanel({
+export const AppsPanel = memo(function AppsPanel({
   series,
   fromSec,
   toSec,
@@ -313,4 +313,4 @@ export function AppsPanel({
       )}
     </Card>
   )
-}
+})

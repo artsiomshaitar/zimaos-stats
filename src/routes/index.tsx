@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 
 import { AppsPanel } from "@/components/apps-panel"
@@ -19,7 +19,12 @@ import {
   formatTemp,
   formatWatts,
 } from "@/lib/format"
-import { DEFAULT_RANGE_KEY, RANGES, rangeByKey } from "@/lib/ranges"
+import {
+  DEFAULT_RANGE_KEY,
+  RANGES,
+  rangeByKey,
+  refreshMsFor,
+} from "@/lib/ranges"
 import type { ContainerSeries, Summary, SystemPoint } from "@/server/queries"
 
 interface Snapshot {
@@ -50,7 +55,12 @@ export const Route = createFileRoute("/")({
   component: Dashboard,
 })
 
-const REFRESH_MS = 30_000
+const LIVE_SUMMARY_MS = 3_000
+
+const fmtPct1 = (v: number) => formatPct(v, 1)
+const fmtPct0 = (v: number) => formatPct(v)
+const fmtTempAxis = (v: number) => `${Math.round(v)}°`
+const fmtWattsAxis = (v: number) => `${Math.round(v)} W`
 
 function Dashboard() {
   const initial = Route.useLoaderData()
@@ -76,13 +86,25 @@ function Dashboard() {
     const changedRange = rangeRef.current !== rangeKey
     rangeRef.current = rangeKey
     if (changedRange) void refresh(rangeKey, true)
+    const historyMs = refreshMsFor(rangeByKey(rangeKey))
     const poll = setInterval(
       () => void refresh(rangeRef.current, false),
-      REFRESH_MS
+      historyMs
     )
-    const clock = setInterval(() => forceTick((n) => n + 1), 5000)
+    // Current values update independently of the (possibly slow) history
+    // refetch, so the header numbers stay live on long ranges too.
+    const live =
+      historyMs > LIVE_SUMMARY_MS
+        ? setInterval(() => {
+            fetchSummary()
+              .then((summary) => setSnap((prev) => ({ ...prev, summary })))
+              .catch(() => {})
+          }, LIVE_SUMMARY_MS)
+        : null
+    const clock = setInterval(() => forceTick((n) => n + 1), 1000)
     return () => {
       clearInterval(poll)
+      if (live) clearInterval(live)
       clearInterval(clock)
     }
   }, [rangeKey, refresh])
@@ -97,10 +119,18 @@ function Dashboard() {
     : null
   const stale =
     secondsSinceSample !== null &&
-    secondsSinceSample > summary.pollIntervalSeconds * 4
+    secondsSinceSample > Math.max(10, summary.pollIntervalSeconds * 5)
 
-  const pick = (key: keyof SystemPoint) =>
-    system.map((p) => ({ ts: p.ts, value: p[key] }))
+  const metricPoints = useMemo(() => {
+    const pick = (key: keyof SystemPoint) =>
+      system.map((p) => ({ ts: p.ts, value: p[key] }))
+    return {
+      cpu: pick("cpuPct"),
+      mem: pick("memUsed"),
+      temp: pick("tempC"),
+      power: pick("powerW"),
+    }
+  }, [system])
 
   return (
     <main className="mx-auto flex min-h-svh max-w-5xl flex-col gap-3 px-4 py-5 md:px-6">
@@ -175,11 +205,11 @@ function Dashboard() {
             latest?.cpuPct,
             latest?.cpuPct != null && latest.cpuPct < 10 ? 1 : 0
           )}
-          points={pick("cpuPct")}
+          points={metricPoints.cpu}
           fromSec={fromSec}
           toSec={toSec}
-          formatValue={(v) => formatPct(v, 1)}
-          formatAxis={(v) => formatPct(v)}
+          formatValue={fmtPct1}
+          formatAxis={fmtPct0}
           yMax={100}
           isRefreshing={isRefreshing}
         />
@@ -190,7 +220,7 @@ function Dashboard() {
           currentSub={
             latest?.memTotal ? `of ${formatBytes(latest.memTotal)}` : undefined
           }
-          points={pick("memUsed")}
+          points={metricPoints.mem}
           fromSec={fromSec}
           toSec={toSec}
           formatValue={formatBytes}
@@ -202,11 +232,11 @@ function Dashboard() {
           title="Temperature"
           colorVar="--chart-temp"
           currentValue={formatTemp(latest?.tempC)}
-          points={pick("tempC")}
+          points={metricPoints.temp}
           fromSec={fromSec}
           toSec={toSec}
           formatValue={formatTemp}
-          formatAxis={(v) => `${Math.round(v)}°`}
+          formatAxis={fmtTempAxis}
           yMinAuto
           emptyHint="No temperature sensor found on this device."
           isRefreshing={isRefreshing}
@@ -215,11 +245,11 @@ function Dashboard() {
           title="Power"
           colorVar="--chart-power"
           currentValue={formatWatts(latest?.powerW)}
-          points={pick("powerW")}
+          points={metricPoints.power}
           fromSec={fromSec}
           toSec={toSec}
           formatValue={formatWatts}
-          formatAxis={(v) => `${Math.round(v)} W`}
+          formatAxis={fmtWattsAxis}
           emptyHint="Docker hides power sensors by default — add a volume from /sys/devices/virtual/powercap to /powercap and restart."
           isRefreshing={isRefreshing}
         />
@@ -233,8 +263,9 @@ function Dashboard() {
       />
 
       <footer className="pb-2 text-center text-[10px] text-muted-foreground">
-        sampling every {summary.pollIntervalSeconds}s · keeping{" "}
-        {summary.historyDays} days · {summary.mode} mode
+        v{summary.version} · sampling {summary.pollIntervalSeconds}s (apps{" "}
+        {summary.containerPollIntervalSeconds}s) · keeping {summary.historyDays}{" "}
+        days · {summary.mode} mode
       </footer>
     </main>
   )

@@ -26,15 +26,23 @@ export function collectorMode(): "host" | "demo" {
   return globalThis.__zimaStatsCollector?.mode ?? "host"
 }
 
-function insertSample(
+function insertSystemSample(
   ts: number,
-  sys: Awaited<ReturnType<MetricsSource["sampleSystem"]>>,
+  sys: Awaited<ReturnType<MetricsSource["sampleSystem"]>>
+) {
+  getDb()
+    .prepare(
+      "INSERT INTO system_samples (ts, cpu_pct, mem_used, mem_total, temp_c, power_w) VALUES (?, ?, ?, ?, ?, ?)"
+    )
+    .run(ts, sys.cpuPct, sys.memUsed, sys.memTotal, sys.tempC, sys.powerW)
+}
+
+function insertContainerSamples(
+  ts: number,
   containers: Awaited<ReturnType<MetricsSource["sampleContainers"]>>
 ) {
+  if (containers.length === 0) return
   const db = getDb()
-  const insertSystem = db.prepare(
-    "INSERT INTO system_samples (ts, cpu_pct, mem_used, mem_total, temp_c, power_w) VALUES (?, ?, ?, ?, ?, ?)"
-  )
   const insertContainer = db.prepare(
     "INSERT INTO container_samples (ts, container_id, cpu_pct, mem_used) VALUES (?, ?, ?, ?)"
   )
@@ -44,14 +52,6 @@ function insertSample(
   )
   db.exec("BEGIN")
   try {
-    insertSystem.run(
-      ts,
-      sys.cpuPct,
-      sys.memUsed,
-      sys.memTotal,
-      sys.tempC,
-      sys.powerW
-    )
     for (const c of containers) {
       insertContainer.run(ts, c.id, c.cpuPct, c.memUsed)
       upsertContainer.run(c.id, c.name, c.icon, ts)
@@ -82,7 +82,8 @@ function backfillDemoHistory() {
   const now = Math.floor(Date.now() / 1000)
   const step = Math.max(60, config.pollIntervalSeconds * 4)
   for (let ts = now - config.historyDays * 86400; ts < now; ts += step) {
-    insertSample(ts, demoSystemAt(ts), demoContainersAt(ts))
+    insertSystemSample(ts, demoSystemAt(ts))
+    insertContainerSamples(ts, demoContainersAt(ts))
   }
 }
 
@@ -98,26 +99,37 @@ export function ensureCollectorStarted() {
 
   prune()
 
-  const tick = async () => {
+  // System metrics are a handful of /proc//sys reads — cheap enough to run
+  // tight. Docker stats are an HTTP call per container, so they get their own
+  // slower cadence.
+  const systemTick = async () => {
     try {
-      const ts = Math.floor(Date.now() / 1000)
-      const [sys, containers] = await Promise.all([
-        source.sampleSystem(),
-        source.sampleContainers(),
-      ])
-      insertSample(ts, sys, containers)
+      insertSystemSample(
+        Math.floor(Date.now() / 1000),
+        await source.sampleSystem()
+      )
     } catch (e) {
-      console.error("[collector] sample failed:", e)
+      console.error("[collector] system sample failed:", e)
+    }
+  }
+  const containerTick = async () => {
+    try {
+      insertContainerSamples(
+        Math.floor(Date.now() / 1000),
+        await source.sampleContainers()
+      )
+    } catch (e) {
+      console.error("[collector] container sample failed:", e)
     }
   }
 
-  void tick() // prime CPU counters; first delta lands on the next tick
-  const pollTimer = setInterval(tick, config.pollIntervalSeconds * 1000)
-  pollTimer.unref()
-  const pruneTimer = setInterval(prune, 3600 * 1000)
-  pruneTimer.unref()
+  void systemTick() // prime CPU counters; first delta lands on the next tick
+  void containerTick()
+  setInterval(systemTick, config.pollIntervalSeconds * 1000).unref()
+  setInterval(containerTick, config.containerPollIntervalSeconds * 1000).unref()
+  setInterval(prune, 3600 * 1000).unref()
 
   console.log(
-    `[collector] started (mode=${mode}, every ${config.pollIntervalSeconds}s, keeping ${config.historyDays}d, db=${config.dbPath})`
+    `[collector] started (mode=${mode}, system every ${config.pollIntervalSeconds}s, apps every ${config.containerPollIntervalSeconds}s, keeping ${config.historyDays}d, db=${config.dbPath})`
   )
 }

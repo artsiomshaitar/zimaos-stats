@@ -57,14 +57,15 @@ by editing the Tag field in the app's settings.
 | Env var | Default | Meaning |
 | --- | --- | --- |
 | `HISTORY_DAYS` | `7` | How many days of history to keep (1–365). |
-| `POLL_INTERVAL_SECONDS` | `15` | How often to sample (2–3600). 15s is a good balance: fine-grained charts at negligible CPU cost. |
+| `POLL_INTERVAL_SECONDS` | `2` | Seconds between system samples (1–3600). These are a few `/proc`/`/sys` file reads — sub-millisecond — so a tight cadence is cheap. |
+| `CONTAINER_POLL_INTERVAL_SECONDS` | `15` | Seconds between per-app samples (2–3600). Docker stats are an HTTP call per container, so they run on a slower cadence. |
 | `PORT` | `3000` | HTTP port inside the container. |
 | `DB_PATH` | `/data/zimaos-stats.db` | SQLite file location (point a volume at `/data`). |
 | `DOCKER_SOCKET` | `/var/run/docker.sock` | Docker socket path for per-app stats. |
 | `COLLECTOR_MODE` | `auto` | `auto` / `host` / `demo`. `auto` falls back to demo data when host metrics aren't readable (e.g. developing on macOS). |
 
-Storage footprint: at 15s sampling with ~10 containers, 7 days is roughly 500k rows /
-tens of MB — nothing for SQLite.
+Storage footprint: system samples at 2s for 7 days are ~300k rows, plus ~40k rows per
+app at 15s — a few tens of MB. SQLite (WAL mode) handles this without noticing.
 
 ## Publishing your own image (ghcr.io)
 

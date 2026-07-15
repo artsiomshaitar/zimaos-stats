@@ -70,6 +70,8 @@ export function niceTimeTicks(
 ): Array<number> {
   const span = toSec - fromSec
   const steps = [
+    60,
+    120,
     300,
     900,
     1800,

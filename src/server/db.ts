@@ -55,5 +55,7 @@ export function getDb(): DatabaseSync {
 function migrateLegacyContainerRows(db: DatabaseSync) {
   const hexId = "[0-9a-f]".repeat(12)
   db.prepare(`DELETE FROM containers WHERE id GLOB ?`).run(hexId)
-  db.prepare(`DELETE FROM container_samples WHERE container_id GLOB ?`).run(hexId)
+  db.prepare(`DELETE FROM container_samples WHERE container_id GLOB ?`).run(
+    hexId
+  )
 }

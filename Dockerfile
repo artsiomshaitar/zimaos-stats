@@ -19,7 +19,8 @@ ENV NODE_ENV=production \
     PORT=3000 \
     DB_PATH=/data/zimaos-stats.db \
     HISTORY_DAYS=7 \
-    POLL_INTERVAL_SECONDS=15 \
+    POLL_INTERVAL_SECONDS=2 \
+    CONTAINER_POLL_INTERVAL_SECONDS=15 \
     NODE_OPTIONS=--no-warnings
 
 COPY --from=deps /app/node_modules ./node_modules

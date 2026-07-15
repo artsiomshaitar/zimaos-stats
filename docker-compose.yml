@@ -7,7 +7,8 @@ services:
       - "3080:3000"
     environment:
       HISTORY_DAYS: "7"
-      POLL_INTERVAL_SECONDS: "15"
+      POLL_INTERVAL_SECONDS: "2"
+      CONTAINER_POLL_INTERVAL_SECONDS: "15"
     volumes:
       # Where the SQLite history lives (on ZimaOS use /DATA/AppData/zimaos-stats)
       - ./data:/data

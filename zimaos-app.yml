@@ -15,7 +15,8 @@ services:
         protocol: tcp
     environment:
       - HISTORY_DAYS=7
-      - POLL_INTERVAL_SECONDS=15
+      - POLL_INTERVAL_SECONDS=2
+      - CONTAINER_POLL_INTERVAL_SECONDS=15
     volumes:
       - type: bind
         source: /DATA/AppData/zimaos-stats
@@ -34,7 +35,10 @@ services:
             en_us: How many days of history to keep (1-365)
         - container: POLL_INTERVAL_SECONDS
           description:
-            en_us: Seconds between samples (2-3600)
+            en_us: Seconds between system samples (1-3600)
+        - container: CONTAINER_POLL_INTERVAL_SECONDS
+          description:
+            en_us: Seconds between per-app Docker stats samples (2-3600)
       ports:
         - container: "3000"
           description:

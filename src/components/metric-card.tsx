@@ -1,3 +1,4 @@
+import { memo } from "react"
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
 
 import { Card } from "@/components/ui/card"
@@ -23,7 +24,7 @@ export interface MetricCardProps {
   isRefreshing?: boolean
 }
 
-export function MetricCard({
+export const MetricCard = memo(function MetricCard({
   title,
   colorVar,
   currentValue,
@@ -146,4 +147,4 @@ export function MetricCard({
       </div>
     </Card>
   )
-}
+})

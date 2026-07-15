@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 
 import type { SystemPoint } from "@/server/queries"
 
@@ -9,7 +9,7 @@ const H = 44
  * The whole retention window as a quiet CPU silhouette, with the currently
  * selected time range lit up — context and orientation in one element.
  */
-export function PulseStrip({
+export const PulseStrip = memo(function PulseStrip({
   points,
   retentionFrom,
   now,
@@ -98,4 +98,4 @@ export function PulseStrip({
       </figcaption>
     </figure>
   )
-}
+})
