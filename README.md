@@ -42,14 +42,15 @@ explicitly.
 
 ## Updating
 
-Releases are tagged (`0.1.0`, `0.2.0`, …) because ZimaOS's "check and update" compares
-tags — re-pushing `latest` doesn't register as an update. To update: open the app's
-settings in ZimaOS, change the **Tag** to the new version, save — it pulls and
-recreates. New versions are published by pushing a git tag:
+With the `latest` tag, ZimaOS's **Check then update** compares the local image digest
+against the registry ([`NeedCheckDigestTags`](https://github.com/IceWhaleTech/CasaOS-AppManagement/blob/main/common/constants.go)
+covers exactly `latest`), so it notices new pushes on its own — if it claims you're
+up to date right after a release, the registry check hiccupped or the multi-arch push
+hadn't finished; try again in a minute.
 
-```sh
-git tag v0.2.0 && git push --tags
-```
+Versioned tags (`0.1.0`, `0.2.0`, …) are also published on git tags
+(`git tag v0.2.0 && git push --tags`) if you'd rather pin an exact version and update
+by editing the Tag field in the app's settings.
 
 ## Configuration
 

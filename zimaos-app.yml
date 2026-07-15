@@ -4,7 +4,9 @@
 name: zimaos-stats
 services:
   zimaos-stats:
-    image: ghcr.io/artsiomshaitar/zimaos-stats:0.1.0
+    # "latest" is deliberate: ZimaOS digest-checks latest-tagged apps, so
+    # "Check then update" works. Pin a version tag (e.g. 0.1.0) if you prefer.
+    image: ghcr.io/artsiomshaitar/zimaos-stats:latest
     container_name: zimaos-stats
     restart: unless-stopped
     ports:
