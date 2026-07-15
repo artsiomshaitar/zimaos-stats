@@ -43,6 +43,17 @@ export function getDb(): DatabaseSync {
   db.exec("PRAGMA journal_mode = WAL")
   db.exec("PRAGMA synchronous = NORMAL")
   db.exec(SCHEMA)
+  migrateLegacyContainerRows(db)
   globalThis.__zimaStatsDb = db
   return db
+}
+
+// Container samples used to be keyed by 12-hex Docker container ids; they are
+// now keyed by compose-project (app) ids. Drop the old rows so a stale
+// per-container entry (e.g. an app's separate db container) doesn't sit in the
+// list until retention ages it out.
+function migrateLegacyContainerRows(db: DatabaseSync) {
+  const hexId = "[0-9a-f]".repeat(12)
+  db.prepare(`DELETE FROM containers WHERE id GLOB ?`).run(hexId)
+  db.prepare(`DELETE FROM container_samples WHERE container_id GLOB ?`).run(hexId)
 }

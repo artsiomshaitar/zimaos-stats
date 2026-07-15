@@ -52,6 +52,23 @@ function nameFromContainer(c: any): string {
   return raw.replace(/^\//, "")
 }
 
+// ZimaOS/CasaOS installs an app as a compose project; a multi-container app
+// (e.g. Speedtest Tracker + its db) shares one com.docker.compose.project
+// label. Group by it so the list matches the widget: one row per app.
+function appKeyFromContainer(c: any): string | null {
+  return c.Labels?.["com.docker.compose.project"] ?? null
+}
+
+// "big-bear-speedtest-tracker" -> "Speedtest Tracker"
+function prettifyAppKey(key: string): string {
+  return key
+    .replace(/^big-bear-/, "")
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ")
+}
+
 interface PrevCpu {
   containerNs: number
   systemNs: number | null
@@ -128,5 +145,30 @@ export async function sampleDockerContainers(): Promise<
   for (const id of prevCpuByContainer.keys()) {
     if (!alive.has(id)) prevCpuByContainer.delete(id)
   }
-  return samples.filter((s) => s !== null)
+
+  // Aggregate containers into apps (sum usage across a compose project).
+  const apps = new Map<string, ContainerSample>()
+  for (let i = 0; i < list.length; i++) {
+    const s = samples[i]
+    if (!s) continue
+    const appKey = appKeyFromContainer(list[i])
+    const id = appKey ?? s.id
+    const existing = apps.get(id)
+    if (!existing) {
+      apps.set(id, {
+        ...s,
+        id,
+        name: appKey ? prettifyAppKey(appKey) : s.name,
+      })
+      continue
+    }
+    if (s.cpuPct !== null) {
+      existing.cpuPct = (existing.cpuPct ?? 0) + s.cpuPct
+    }
+    if (s.memUsed !== null) {
+      existing.memUsed = (existing.memUsed ?? 0) + s.memUsed
+    }
+    existing.icon ??= s.icon
+  }
+  return [...apps.values()]
 }
