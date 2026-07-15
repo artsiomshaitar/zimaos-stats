@@ -12,11 +12,16 @@ per-app (container) CPU/RAM over time and shows them on a dashboard.
 
 ## Install on ZimaOS (App Store → Install a customized app)
 
-Fill in the settings dialog like this:
+**Fast way — import:** click the import icon in the top-right of the customized-app
+dialog and paste the contents of [`zimaos-app.yml`](zimaos-app.yml). It prefills the
+image, title, icon, port, both volumes, and the env vars with their defaults — review
+and hit Install.
+
+**Manual way:** fill in the settings dialog like this:
 
 | Field | Value |
 | --- | --- |
-| Docker image | `ghcr.io/OWNER/zimaos-stats` (see Publishing below) |
+| Docker image | `ghcr.io/artsiomshaitar/zimaos-stats` |
 | Tag | `latest` |
 | Title | ZimaOS Stats |
 | Web UI | `http://<your-device>:3080/` |

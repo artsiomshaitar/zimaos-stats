@@ -1,0 +1,63 @@
+# ZimaOS / CasaOS app definition for zimaos-stats.
+# In ZimaOS: App Store → Install a customized app → click the import icon
+# (top-right of the dialog) → paste this file. Every field below prefills.
+name: zimaos-stats
+services:
+  zimaos-stats:
+    image: ghcr.io/artsiomshaitar/zimaos-stats:latest
+    container_name: zimaos-stats
+    restart: unless-stopped
+    ports:
+      - target: 3000
+        published: "3080"
+        protocol: tcp
+    environment:
+      - HISTORY_DAYS=7
+      - POLL_INTERVAL_SECONDS=15
+    volumes:
+      - type: bind
+        source: /DATA/AppData/zimaos-stats
+        target: /data
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+    x-casaos:
+      envs:
+        - container: HISTORY_DAYS
+          description:
+            en_us: How many days of history to keep (1-365)
+        - container: POLL_INTERVAL_SECONDS
+          description:
+            en_us: Seconds between samples (2-3600)
+      ports:
+        - container: "3000"
+          description:
+            en_us: Web UI
+      volumes:
+        - container: /data
+          description:
+            en_us: SQLite history storage
+        - container: /var/run/docker.sock
+          description:
+            en_us: Docker socket (read) for per-app CPU/RAM stats
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: zimaos-stats
+  author: artsiomshaitar
+  developer: artsiomshaitar
+  category: Utilities
+  icon: https://raw.githubusercontent.com/artsiomshaitar/zimaos-stats/main/icon.png
+  title:
+    en_us: ZimaOS Stats
+  tagline:
+    en_us: Resource usage history for your Zima device
+  description:
+    en_us: >-
+      Records CPU, RAM, temperature, power and per-app (container) usage over
+      time — the history the built-in System widget doesn't keep. Lightweight
+      collector, SQLite storage, self-pruning.
+  scheme: http
+  port_map: "3080"
+  index: /

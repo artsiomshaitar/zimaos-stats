@@ -1,6 +1,6 @@
 services:
   zimaos-stats:
-    image: ghcr.io/OWNER/zimaos-stats:latest # replace OWNER, or use `build: .`
+    image: ghcr.io/artsiomshaitar/zimaos-stats:latest # or use `build: .`
     container_name: zimaos-stats
     restart: unless-stopped
     ports:
