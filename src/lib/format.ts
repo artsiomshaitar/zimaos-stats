@@ -31,6 +31,22 @@ export function formatWatts(n: number | null | undefined): string {
   return `${n.toFixed(1)} W`
 }
 
+/** Network rate (bytes/sec) → "4.2 kB/s" / "1.3 MB/s". */
+export function formatRate(n: number | null | undefined): string {
+  if (n == null) return "—"
+  const mb = n / 1024 ** 2
+  if (mb >= 1) return `${mb.toFixed(1)} MB/s`
+  return `${(n / 1024).toFixed(1)} kB/s`
+}
+
+/** Compact rate label for axis ticks: 0 / 40k / 2M (per second implied). */
+export function formatRateAxis(n: number): string {
+  if (n === 0) return "0"
+  const mb = n / 1024 ** 2
+  if (mb >= 1) return `${mb >= 10 ? mb.toFixed(0) : mb.toFixed(1)}M`
+  return `${(n / 1024).toFixed(0)}k`
+}
+
 const tickShort = new Intl.DateTimeFormat("en-GB", {
   hour: "2-digit",
   minute: "2-digit",

@@ -1,6 +1,6 @@
 {
   "name": "zimaos-stats",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,7 +16,6 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
-    "@fontsource-variable/geist-mono": "^5.2.8",
     "@fontsource-variable/ibm-plex-sans": "^5.2.8",
     "@remixicon/react": "^4.9.0",
     "@tailwindcss/vite": "^4",

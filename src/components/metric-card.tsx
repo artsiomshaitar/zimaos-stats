@@ -1,6 +1,7 @@
 import { memo } from "react"
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import type { LucideIcon } from "lucide-react"
 
+import { MetricAreaChart } from "@/components/metric-area-chart"
 import { SlidingNumber } from "@/components/animate-ui/primitives/texts/sliding-number"
 import {
   Card,
@@ -9,20 +10,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import type { ChartConfig } from "@/components/ui/chart"
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart"
-import { formatTick, formatTooltipTime, niceTimeTicks } from "@/lib/format"
 
 export interface MetricCardProps {
   title: string
-  colorVar: string // a preset chart token, e.g. "--chart-1"
+  icon: LucideIcon
+  colorVar: string // a chart token, e.g. "--series-ram"
   /** Current headline value; null renders a dash (no data yet). */
   value: number | null
-  /** Suffix shown after the animated number, e.g. "%", " GB", "°C". */
+  /** Suffix shown after the animated number, e.g. "%", "GB", "°C". */
   unit: string
   /** Fixed decimals for the sliding number. */
   decimalPlaces: number
@@ -42,6 +37,7 @@ export interface MetricCardProps {
 
 export const MetricCard = memo(function MetricCard({
   title,
+  icon: Icon,
   colorVar,
   value,
   unit,
@@ -57,18 +53,13 @@ export const MetricCard = memo(function MetricCard({
   emptyHint,
   isRefreshing,
 }: MetricCardProps) {
-  const spanSec = toSec - fromSec
-  const ticks = niceTimeTicks(fromSec, toSec)
-  const hasData = points.some((p) => p.value != null)
-
-  const chartConfig = {
-    value: { label: title, color: `var(${colorVar})` },
-  } satisfies ChartConfig
-
   return (
     <Card size="sm" className="gap-4">
       <CardHeader>
-        <CardTitle className="text-muted-foreground">{title}</CardTitle>
+        <CardTitle className="flex items-center gap-1.5 text-muted-foreground">
+          <Icon className="size-4" aria-hidden />
+          {title}
+        </CardTitle>
         <CardAction className="flex items-baseline gap-1.5">
           {value == null ? (
             <span className="text-xl font-semibold text-foreground">—</span>
@@ -91,75 +82,18 @@ export const MetricCard = memo(function MetricCard({
         className="px-2 transition-opacity duration-300"
         style={{ opacity: isRefreshing ? 0.6 : 1 }}
       >
-        {hasData ? (
-          <ChartContainer
-            config={chartConfig}
-            className="aspect-auto h-36 w-full"
-          >
-            <AreaChart
-              data={points}
-              margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
-            >
-              <CartesianGrid vertical={false} />
-              <XAxis
-                dataKey="ts"
-                type="number"
-                domain={[fromSec, toSec]}
-                ticks={ticks}
-                tickFormatter={(v: number) => formatTick(v, spanSec)}
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 10 }}
-                minTickGap={40}
-              />
-              <YAxis
-                domain={[yMinAuto ? "auto" : 0, yMax ?? "auto"]}
-                tickCount={3}
-                tickFormatter={(v: number) => formatAxis(v)}
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 10 }}
-                width={44}
-              />
-              <ChartTooltip
-                isAnimationActive={false}
-                content={
-                  <ChartTooltipContent
-                    indicator="line"
-                    labelFormatter={(_, payload) =>
-                      formatTooltipTime(
-                        Number((payload[0]?.payload as { ts: number }).ts)
-                      )
-                    }
-                    formatter={(v) => (
-                      <div className="flex flex-1 items-center justify-between gap-3">
-                        <span className="text-muted-foreground">{title}</span>
-                        <span className="font-mono font-medium text-foreground tabular-nums">
-                          {formatValue(Number(v))}
-                        </span>
-                      </div>
-                    )}
-                  />
-                }
-              />
-              <Area
-                dataKey="value"
-                type="monotone"
-                stroke="var(--color-value)"
-                strokeWidth={2}
-                fill="var(--color-value)"
-                fillOpacity={0.1}
-                dot={false}
-                connectNulls={false}
-                isAnimationActive={false}
-              />
-            </AreaChart>
-          </ChartContainer>
-        ) : (
-          <div className="flex h-36 items-center justify-center px-2 text-center text-xs text-muted-foreground">
-            {emptyHint ?? "No samples in this range yet."}
-          </div>
-        )}
+        <MetricAreaChart
+          label={title}
+          colorVar={colorVar}
+          points={points}
+          fromSec={fromSec}
+          toSec={toSec}
+          formatValue={formatValue}
+          formatAxis={formatAxis}
+          yMax={yMax}
+          yMinAuto={yMinAuto}
+          emptyHint={emptyHint}
+        />
       </CardContent>
     </Card>
   )

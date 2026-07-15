@@ -9,6 +9,8 @@ export interface SystemPoint {
   memTotal: number | null
   tempC: number | null
   powerW: number | null
+  netRx: number | null
+  netTx: number | null
 }
 
 export interface ContainerSeries {
@@ -56,7 +58,7 @@ export function getSummary(): Summary {
   const latest = db
     .prepare(
       `SELECT ts, cpu_pct AS cpuPct, mem_used AS memUsed, mem_total AS memTotal,
-              temp_c AS tempC, power_w AS powerW
+              temp_c AS tempC, power_w AS powerW, net_rx AS netRx, net_tx AS netTx
        FROM system_samples ORDER BY ts DESC LIMIT 1`
     )
     .get() as SystemPoint | undefined
@@ -90,7 +92,9 @@ export function getSystemHistory(
               AVG(mem_used) AS memUsed,
               MAX(mem_total) AS memTotal,
               AVG(temp_c) AS tempC,
-              AVG(power_w) AS powerW
+              AVG(power_w) AS powerW,
+              AVG(net_rx) AS netRx,
+              AVG(net_tx) AS netTx
        FROM system_samples
        WHERE ts >= $from AND ts <= $to
        GROUP BY ts / $bucket

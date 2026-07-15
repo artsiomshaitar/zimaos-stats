@@ -43,12 +43,19 @@ export function demoSystemAt(tsSec: number): Omit<SystemSample, "ts"> {
     MEM_TOTAL * 0.95,
     MEM_TOTAL * (0.28 + daily * 0.15 + fast * 0.04 + noise(0.01))
   )
+  // Bursty network: a fast carrier with occasional spikes, download > upload.
+  const burst = wave(tsSec, 45, 0) ** 3
+  const KB = 1024
+  const netRx = Math.max(0, (6 + daily * 8 + burst * 40 + noise(3)) * KB)
+  const netTx = Math.max(0, (2 + daily * 3 + burst * 12 + noise(1.5)) * KB)
   return {
     cpuPct,
     memUsed,
     memTotal: MEM_TOTAL,
     tempC: 36 + cpuPct * 0.35 + noise(0.6),
     powerW: 1.4 + cpuPct * 0.11 + noise(0.15),
+    netRx,
+    netTx,
   }
 }
 

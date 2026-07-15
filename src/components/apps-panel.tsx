@@ -1,4 +1,5 @@
 import { memo, useMemo, useState } from "react"
+import { AppWindowMac } from "lucide-react"
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 
 import {
@@ -154,7 +155,10 @@ export const AppsPanel = memo(function AppsPanel({
   return (
     <Card size="sm" className="gap-4">
       <CardHeader>
-        <CardTitle className="text-muted-foreground">Apps</CardTitle>
+        <CardTitle className="flex items-center gap-1.5 text-muted-foreground">
+          <AppWindowMac className="size-4" aria-hidden />
+          Apps
+        </CardTitle>
         <CardAction>
           <Tabs value={metric} onValueChange={(v) => setMetric(v as Metric)}>
             <TabsList className="h-7">

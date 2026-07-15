@@ -11,7 +11,9 @@ CREATE TABLE IF NOT EXISTS system_samples (
   mem_used INTEGER,
   mem_total INTEGER,
   temp_c REAL,
-  power_w REAL
+  power_w REAL,
+  net_rx REAL,
+  net_tx REAL
 );
 CREATE INDEX IF NOT EXISTS idx_system_ts ON system_samples (ts);
 
@@ -43,9 +45,27 @@ export function getDb(): DatabaseSync {
   db.exec("PRAGMA journal_mode = WAL")
   db.exec("PRAGMA synchronous = NORMAL")
   db.exec(SCHEMA)
+  addMissingColumns(db)
   migrateLegacyContainerRows(db)
   globalThis.__zimaStatsDb = db
   return db
+}
+
+// Columns added after the first release; ADD COLUMN on an existing table is a
+// no-op-safe migration (older rows get NULL, which the charts already handle).
+function addMissingColumns(db: DatabaseSync) {
+  const cols = new Set(
+    (
+      db.prepare("PRAGMA table_info(system_samples)").all() as Array<{
+        name: string
+      }>
+    ).map((c) => c.name)
+  )
+  for (const col of ["net_rx", "net_tx"]) {
+    if (!cols.has(col)) {
+      db.exec(`ALTER TABLE system_samples ADD COLUMN ${col} REAL`)
+    }
+  }
 }
 
 // Container samples used to be keyed by 12-hex Docker container ids; they are

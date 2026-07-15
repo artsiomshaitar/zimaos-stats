@@ -5,6 +5,10 @@ export interface SystemSample {
   memTotal: number | null
   tempC: number | null
   powerW: number | null
+  /** Received bytes/sec across physical interfaces. */
+  netRx: number | null
+  /** Transmitted bytes/sec across physical interfaces. */
+  netTx: number | null
 }
 
 export interface ContainerSample {

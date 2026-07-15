@@ -62,6 +62,43 @@ function readMemory(): { used: number; total: number } | null {
   }
 }
 
+// ---- Network ----
+
+interface NetTotals {
+  rx: number
+  tx: number
+}
+
+// Sum rx/tx bytes across real interfaces, skipping loopback and the virtual
+// bridges Docker/libvirt create (they'd double-count container traffic).
+function readNetTotals(): NetTotals | null {
+  try {
+    const lines = readFileSync("/proc/net/dev", "utf8").split("\n").slice(2)
+    let rx = 0
+    let tx = 0
+    let seen = false
+    for (const line of lines) {
+      const [namePart, rest] = line.split(":")
+      if (!rest) continue
+      const iface = namePart.trim()
+      if (
+        iface === "lo" ||
+        /^(docker|veth|br-|virbr|vnet|tap|tun|cni|flannel|cali|kube)/.test(iface)
+      ) {
+        continue
+      }
+      const f = rest.trim().split(/\s+/).map(Number)
+      if (f.length < 9) continue
+      rx += f[0] // receive bytes
+      tx += f[8] // transmit bytes
+      seen = true
+    }
+    return seen ? { rx, tx } : null
+  } catch {
+    return null
+  }
+}
+
 // ---- Temperature ----
 
 // Preferred sensor types, best first. x86_pkg_temp is the CPU package on
@@ -164,6 +201,8 @@ export class HostMetricsSource implements MetricsSource {
   private tempPath = findTempPath()
   private rapl = findRaplDomains()
   private lastRaplReadMs: number | null = null
+  private lastNet: NetTotals | null = null
+  private lastNetReadMs: number | null = null
 
   async sampleSystem(): Promise<Omit<SystemSample, "ts">> {
     // CPU: delta against the previous poll
@@ -212,12 +251,30 @@ export class HostMetricsSource implements MetricsSource {
       this.lastRaplReadMs = nowMs
     }
 
+    // Network: byte-counter delta across physical interfaces
+    let netRx: number | null = null
+    let netTx: number | null = null
+    const net = readNetTotals()
+    if (net) {
+      const nowMs = Date.now()
+      if (this.lastNet && this.lastNetReadMs !== null && nowMs > this.lastNetReadMs) {
+        const dt = (nowMs - this.lastNetReadMs) / 1000
+        // Counters only climb; a drop means a reset/reboot — treat as no delta.
+        netRx = net.rx >= this.lastNet.rx ? (net.rx - this.lastNet.rx) / dt : null
+        netTx = net.tx >= this.lastNet.tx ? (net.tx - this.lastNet.tx) / dt : null
+      }
+      this.lastNet = net
+      this.lastNetReadMs = nowMs
+    }
+
     return {
       cpuPct,
       memUsed: mem?.used ?? null,
       memTotal: mem?.total ?? null,
       tempC,
       powerW,
+      netRx,
+      netTx,
     }
   }
 

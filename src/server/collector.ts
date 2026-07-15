@@ -32,9 +32,18 @@ function insertSystemSample(
 ) {
   getDb()
     .prepare(
-      "INSERT INTO system_samples (ts, cpu_pct, mem_used, mem_total, temp_c, power_w) VALUES (?, ?, ?, ?, ?, ?)"
+      "INSERT INTO system_samples (ts, cpu_pct, mem_used, mem_total, temp_c, power_w, net_rx, net_tx) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
     )
-    .run(ts, sys.cpuPct, sys.memUsed, sys.memTotal, sys.tempC, sys.powerW)
+    .run(
+      ts,
+      sys.cpuPct,
+      sys.memUsed,
+      sys.memTotal,
+      sys.tempC,
+      sys.powerW,
+      sys.netRx,
+      sys.netTx
+    )
 }
 
 function insertContainerSamples(

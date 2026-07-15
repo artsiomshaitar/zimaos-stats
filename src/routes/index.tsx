@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 
+import { MemoryStick, Thermometer } from "lucide-react"
+
 import { AppsPanel } from "@/components/apps-panel"
+import { CpuPowerCard } from "@/components/cpu-power-card"
 import { Logo } from "@/components/logo"
 import { MetricCard } from "@/components/metric-card"
+import { NetworkCard } from "@/components/network-card"
 import { resolveDeviceName } from "@/lib/device"
 import { Badge } from "@/components/ui/badge"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
@@ -16,9 +20,7 @@ import {
   formatAgo,
   formatBytes,
   formatBytesAxis,
-  formatPct,
   formatTemp,
-  formatWatts,
 } from "@/lib/format"
 import {
   DEFAULT_RANGE_KEY,
@@ -55,10 +57,7 @@ export const Route = createFileRoute("/")({
 
 const LIVE_SUMMARY_MS = 3_000
 
-const fmtPct1 = (v: number) => formatPct(v, 1)
-const fmtPct0 = (v: number) => formatPct(v)
 const fmtTempAxis = (v: number) => `${Math.round(v)}°`
-const fmtWattsAxis = (v: number) => `${Math.round(v)} W`
 
 function Dashboard() {
   const initial = Route.useLoaderData()
@@ -131,6 +130,7 @@ function Dashboard() {
       mem: pick("memUsed"),
       temp: pick("tempC"),
       power: pick("powerW"),
+      net: system.map((p) => ({ ts: p.ts, down: p.netRx, up: p.netTx })),
     }
   }, [system])
 
@@ -204,22 +204,18 @@ function Dashboard() {
         className="grid grid-cols-1 gap-3 md:grid-cols-2"
         aria-label="System metrics"
       >
-        <MetricCard
-          title="CPU"
-          colorVar="--series-cpu"
-          value={latest?.cpuPct ?? null}
-          unit="%"
-          decimalPlaces={1}
-          points={metricPoints.cpu}
+        <CpuPowerCard
+          cpuValue={latest?.cpuPct ?? null}
+          powerValue={latest?.powerW ?? null}
+          cpuPoints={metricPoints.cpu}
+          powerPoints={metricPoints.power}
           fromSec={fromSec}
           toSec={toSec}
-          formatValue={fmtPct1}
-          formatAxis={fmtPct0}
-          yMax={100}
           isRefreshing={isRefreshing}
         />
         <MetricCard
           title="RAM"
+          icon={MemoryStick}
           colorVar="--series-ram"
           value={latest?.memUsed != null ? latest.memUsed / 1024 ** 3 : null}
           unit="GB"
@@ -237,6 +233,7 @@ function Dashboard() {
         />
         <MetricCard
           title="Temperature"
+          icon={Thermometer}
           colorVar="--series-temp"
           value={latest?.tempC ?? null}
           unit="°C"
@@ -250,18 +247,12 @@ function Dashboard() {
           emptyHint="No temperature sensor found on this device."
           isRefreshing={isRefreshing}
         />
-        <MetricCard
-          title="Power"
-          colorVar="--series-power"
-          value={latest?.powerW ?? null}
-          unit="W"
-          decimalPlaces={1}
-          points={metricPoints.power}
+        <NetworkCard
+          points={metricPoints.net}
+          down={latest?.netRx ?? null}
+          up={latest?.netTx ?? null}
           fromSec={fromSec}
           toSec={toSec}
-          formatValue={formatWatts}
-          formatAxis={fmtWattsAxis}
-          emptyHint="Docker hides power sensors by default — add a volume from /sys/devices/virtual/powercap to /powercap and restart."
           isRefreshing={isRefreshing}
         />
       </section>
