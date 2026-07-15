@@ -218,7 +218,7 @@ function Dashboard() {
       >
         <MetricCard
           title="CPU"
-          colorVar="--chart-1"
+          colorVar="--series-cpu"
           currentValue={formatPct(
             latest?.cpuPct,
             latest?.cpuPct != null && latest.cpuPct < 10 ? 1 : 0
@@ -233,7 +233,7 @@ function Dashboard() {
         />
         <MetricCard
           title="RAM"
-          colorVar="--chart-2"
+          colorVar="--series-ram"
           currentValue={formatBytes(latest?.memUsed)}
           currentSub={
             latest?.memTotal ? `of ${formatBytes(latest.memTotal)}` : undefined
@@ -248,7 +248,7 @@ function Dashboard() {
         />
         <MetricCard
           title="Temperature"
-          colorVar="--chart-3"
+          colorVar="--series-temp"
           currentValue={formatTemp(latest?.tempC)}
           points={metricPoints.temp}
           fromSec={fromSec}
@@ -261,7 +261,7 @@ function Dashboard() {
         />
         <MetricCard
           title="Power"
-          colorVar="--chart-4"
+          colorVar="--series-power"
           currentValue={formatWatts(latest?.powerW)}
           points={metricPoints.power}
           fromSec={fromSec}

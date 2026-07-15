@@ -34,11 +34,11 @@ import {
 import type { ContainerSeries } from "@/server/queries"
 
 const SLOT_VARS = [
-  "--chart-1",
-  "--chart-2",
-  "--chart-3",
-  "--chart-4",
-  "--chart-5",
+  "--series-1",
+  "--series-2",
+  "--series-3",
+  "--series-4",
+  "--series-5",
 ] as const
 const MAX_CHARTED = 5
 

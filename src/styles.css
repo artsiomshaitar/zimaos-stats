@@ -107,6 +107,18 @@
     --chart-3: oklch(0.511 0.262 276.966);
     --chart-4: oklch(0.457 0.24 277.023);
     --chart-5: oklch(0.398 0.195 277.366);
+    /* Distinct, colorblind-safe hues for the metric/app series only — the
+       preset's --chart-1..5 above is a monochrome purple ramp (kept intact).
+       Validated as categorical sets against the card surface. */
+    --series-cpu: #1ea861;
+    --series-ram: #3987e5;
+    --series-temp: #d95926;
+    --series-power: #9085e9;
+    --series-1: #3987e5;
+    --series-2: #008300;
+    --series-3: #d55181;
+    --series-4: #c98500;
+    --series-5: #199e70;
     --sidebar: oklch(0.218 0.008 223.9);
     --sidebar-foreground: oklch(0.987 0.002 197.1);
     --sidebar-primary: oklch(0.723 0.219 149.579);
