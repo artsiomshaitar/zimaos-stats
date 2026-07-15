@@ -15,7 +15,13 @@ export default [
     },
   },
   {
-    // src/components/ui is shadcn-generated code
-    ignores: ["eslint.config.js", ".prettierrc", "src/components/ui/**"],
+    // generated component code (shadcn + animate-ui registries)
+    ignores: [
+      "eslint.config.js",
+      ".prettierrc",
+      "src/components/ui/**",
+      "src/components/animate-ui/**",
+      "src/hooks/use-is-in-view.tsx",
+    ],
   },
 ]

@@ -4,7 +4,6 @@ import { createFileRoute } from "@tanstack/react-router"
 import { AppsPanel } from "@/components/apps-panel"
 import { Logo } from "@/components/logo"
 import { MetricCard } from "@/components/metric-card"
-import { PulseStrip } from "@/components/pulse-strip"
 import { resolveDeviceName } from "@/lib/device"
 import { Badge } from "@/components/ui/badge"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
@@ -34,22 +33,19 @@ interface Snapshot {
   summary: Summary
   system: Array<SystemPoint>
   containers: Array<ContainerSeries>
-  pulse: Array<SystemPoint>
 }
 
 async function loadSnapshot(rangeKey: string): Promise<Snapshot> {
   const now = Math.floor(Date.now() / 1000)
   const range = rangeByKey(rangeKey)
   const summary = await fetchSummary()
-  const retentionFrom = now - summary.historyDays * 86400
-  const [system, containers, pulse] = await Promise.all([
+  const [system, containers] = await Promise.all([
     fetchSystemHistory({ data: { fromSec: now - range.seconds, toSec: now } }),
     fetchContainerHistory({
       data: { fromSec: now - range.seconds, toSec: now },
     }),
-    fetchSystemHistory({ data: { fromSec: retentionFrom, toSec: now } }),
   ])
-  return { now, summary, system, containers, pulse }
+  return { now, summary, system, containers }
 }
 
 export const Route = createFileRoute("/")({
@@ -115,7 +111,7 @@ function Dashboard() {
   const range = rangeByKey(rangeKey)
   const toSec = snap.now
   const fromSec = toSec - range.seconds
-  const { summary, system, containers, pulse } = snap
+  const { summary, system, containers } = snap
   const latest = summary.latest
   const secondsSinceSample = latest
     ? Math.floor(Date.now() / 1000) - latest.ts
@@ -162,7 +158,7 @@ function Dashboard() {
 
   return (
     <main className="mx-auto flex min-h-svh max-w-5xl flex-col gap-3 px-4 py-5 md:px-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <Logo className="h-7 w-7 rounded-[8px]" />
           <h1 className="text-sm font-semibold tracking-tight text-foreground">
@@ -204,14 +200,6 @@ function Dashboard() {
         </div>
       </header>
 
-      <PulseStrip
-        points={pulse}
-        retentionFrom={toSec - summary.historyDays * 86400}
-        now={toSec}
-        selectedFrom={fromSec}
-        historyDays={summary.historyDays}
-      />
-
       <section
         className="grid grid-cols-1 gap-3 md:grid-cols-2"
         aria-label="System metrics"
@@ -219,10 +207,9 @@ function Dashboard() {
         <MetricCard
           title="CPU"
           colorVar="--series-cpu"
-          currentValue={formatPct(
-            latest?.cpuPct,
-            latest?.cpuPct != null && latest.cpuPct < 10 ? 1 : 0
-          )}
+          value={latest?.cpuPct ?? null}
+          unit="%"
+          decimalPlaces={1}
           points={metricPoints.cpu}
           fromSec={fromSec}
           toSec={toSec}
@@ -234,7 +221,9 @@ function Dashboard() {
         <MetricCard
           title="RAM"
           colorVar="--series-ram"
-          currentValue={formatBytes(latest?.memUsed)}
+          value={latest?.memUsed != null ? latest.memUsed / 1024 ** 3 : null}
+          unit="GB"
+          decimalPlaces={2}
           currentSub={
             latest?.memTotal ? `of ${formatBytes(latest.memTotal)}` : undefined
           }
@@ -249,7 +238,9 @@ function Dashboard() {
         <MetricCard
           title="Temperature"
           colorVar="--series-temp"
-          currentValue={formatTemp(latest?.tempC)}
+          value={latest?.tempC ?? null}
+          unit="°C"
+          decimalPlaces={1}
           points={metricPoints.temp}
           fromSec={fromSec}
           toSec={toSec}
@@ -262,7 +253,9 @@ function Dashboard() {
         <MetricCard
           title="Power"
           colorVar="--series-power"
-          currentValue={formatWatts(latest?.powerW)}
+          value={latest?.powerW ?? null}
+          unit="W"
+          decimalPlaces={1}
           points={metricPoints.power}
           fromSec={fromSec}
           toSec={toSec}

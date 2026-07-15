@@ -1,6 +1,6 @@
 {
   "name": "zimaos-stats",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -17,6 +17,7 @@
   "dependencies": {
     "@base-ui/react": "^1.6.0",
     "@fontsource-variable/geist-mono": "^5.2.8",
+    "@fontsource-variable/ibm-plex-sans": "^5.2.8",
     "@remixicon/react": "^4.9.0",
     "@tailwindcss/vite": "^4",
     "@tanstack/react-devtools": "latest",
@@ -27,8 +28,11 @@
     "@tanstack/router-plugin": "latest",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "lucide-react": "^1.24.0",
+    "motion": "^12.42.2",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
+    "react-use-measure": "^2.1.7",
     "recharts": "3.8.0",
     "shadcn": "^4.13.0",
     "srvx": "^0.11.22",

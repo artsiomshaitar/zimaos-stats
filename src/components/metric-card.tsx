@@ -1,6 +1,7 @@
 import { memo } from "react"
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
 
+import { SlidingNumber } from "@/components/animate-ui/primitives/texts/sliding-number"
 import {
   Card,
   CardAction,
@@ -19,7 +20,12 @@ import { formatTick, formatTooltipTime, niceTimeTicks } from "@/lib/format"
 export interface MetricCardProps {
   title: string
   colorVar: string // a preset chart token, e.g. "--chart-1"
-  currentValue: string
+  /** Current headline value; null renders a dash (no data yet). */
+  value: number | null
+  /** Suffix shown after the animated number, e.g. "%", " GB", "°C". */
+  unit: string
+  /** Fixed decimals for the sliding number. */
+  decimalPlaces: number
   currentSub?: string
   points: Array<{ ts: number; value: number | null }>
   fromSec: number
@@ -37,7 +43,9 @@ export interface MetricCardProps {
 export const MetricCard = memo(function MetricCard({
   title,
   colorVar,
-  currentValue,
+  value,
+  unit,
+  decimalPlaces,
   currentSub,
   points,
   fromSec,
@@ -62,9 +70,16 @@ export const MetricCard = memo(function MetricCard({
       <CardHeader>
         <CardTitle className="text-muted-foreground">{title}</CardTitle>
         <CardAction className="flex items-baseline gap-1.5">
-          <span className="text-xl font-semibold text-foreground">
-            {currentValue}
-          </span>
+          {value == null ? (
+            <span className="text-xl font-semibold text-foreground">—</span>
+          ) : (
+            <span className="flex items-baseline text-xl font-semibold text-foreground tabular-nums">
+              <SlidingNumber number={value} decimalPlaces={decimalPlaces} />
+              <span className="ml-0.5 text-sm font-medium text-muted-foreground">
+                {unit}
+              </span>
+            </span>
+          )}
           {currentSub && (
             <span className="text-[11px] text-muted-foreground">
               {currentSub}
@@ -116,11 +131,11 @@ export const MetricCard = memo(function MetricCard({
                         Number((payload[0]?.payload as { ts: number }).ts)
                       )
                     }
-                    formatter={(value) => (
+                    formatter={(v) => (
                       <div className="flex flex-1 items-center justify-between gap-3">
                         <span className="text-muted-foreground">{title}</span>
                         <span className="font-mono font-medium text-foreground tabular-nums">
-                          {formatValue(Number(value))}
+                          {formatValue(Number(v))}
                         </span>
                       </div>
                     )}
