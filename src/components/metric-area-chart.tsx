@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react"
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
 
 import type { ChartConfig } from "@/components/ui/chart"
@@ -11,6 +12,8 @@ import { formatTick, formatTooltipTime, niceTimeTicks } from "@/lib/format"
 export interface MetricAreaChartProps {
   /** Tooltip/legend label for the single series. */
   label: string
+  /** Icon shown in the tooltip beside the label. */
+  icon?: LucideIcon
   colorVar: string // a chart token, e.g. "--series-cpu"
   points: Array<{ ts: number; value: number | null }>
   fromSec: number
@@ -26,6 +29,7 @@ export interface MetricAreaChartProps {
 /** Single-series time-area chart shared by the metric cards. */
 export function MetricAreaChart({
   label,
+  icon: Icon,
   colorVar,
   points,
   fromSec,
@@ -75,7 +79,7 @@ export function MetricAreaChart({
           axisLine={false}
           tickLine={false}
           tick={{ fontSize: 10 }}
-          width={44}
+          width={52}
         />
         <ChartTooltip
           isAnimationActive={false}
@@ -89,7 +93,10 @@ export function MetricAreaChart({
               }
               formatter={(v) => (
                 <div className="flex flex-1 items-center justify-between gap-3">
-                  <span className="text-muted-foreground">{label}</span>
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    {Icon && <Icon className="size-3.5" aria-hidden />}
+                    {label}
+                  </span>
                   <span className="font-mono font-medium text-foreground tabular-nums">
                     {formatValue(Number(v))}
                   </span>

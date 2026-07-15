@@ -15,6 +15,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Table,
@@ -44,7 +45,7 @@ const SLOT_VARS = [
 const MAX_CHARTED = 5
 
 // Sticky container-id → color-slot assignment. Colors follow the app, not its
-// current rank, so a container keeps its hue across range/tab changes.
+// current rank, so a container keeps its hue across range/tab/selection changes.
 const slotByContainer = new Map<string, number>()
 
 function assignSlots(chartedIds: Array<string>): Map<string, string> {
@@ -108,6 +109,8 @@ export const AppsPanel = memo(function AppsPanel({
 }) {
   const [metric, setMetric] = useState<Metric>("cpu")
   const [hoveredId, setHoveredId] = useState<string | null>(null)
+  // Ids whose line is hidden. Empty = all shown (so newly-seen apps default in).
+  const [hidden, setHidden] = useState<Set<string>>(new Set())
   const spanSec = toSec - fromSec
   const ticks = niceTimeTicks(fromSec, toSec)
 
@@ -117,20 +120,28 @@ export const AppsPanel = memo(function AppsPanel({
     return [...series].sort((a, b) => value(b) - value(a))
   }, [series, metric])
 
-  const charted = ranked.slice(0, MAX_CHARTED)
-  const colorById = assignSlots(charted.map((c) => c.id))
+  const isShown = (id: string) => !hidden.has(id)
+  const shownRanked = ranked.filter((s) => isShown(s.id))
+  const total = ranked.length
+  const shownCount = shownRanked.length
+  const allShown = total > 0 && shownCount === total
+  const noneShown = shownCount === 0
+
+  // Only the shown apps get plotted (capped to the color palette).
+  const drawn = shownRanked.slice(0, MAX_CHARTED)
+  const colorById = assignSlots(drawn.map((c) => c.id))
 
   const chartConfig: ChartConfig = Object.fromEntries(
-    charted.map((s) => [s.id, { label: s.name, color: colorById.get(s.id) }])
+    drawn.map((s) => [s.id, { label: s.name, color: colorById.get(s.id) }])
   )
-  const nameById = new Map(charted.map((s) => [s.id, s.name]))
+  const nameById = new Map(drawn.map((s) => [s.id, s.name]))
 
   const rows = useMemo(() => {
     const byTs = new Map<
       number,
       Record<string, number | null> & { ts: number }
     >()
-    for (const s of charted) {
+    for (const s of drawn) {
       for (const p of s.points) {
         let row = byTs.get(p.ts)
         if (!row) {
@@ -141,7 +152,7 @@ export const AppsPanel = memo(function AppsPanel({
       }
     }
     return [...byTs.values()].sort((a, b) => a.ts - b.ts)
-  }, [charted, metric])
+  }, [drawn, metric])
 
   const fmtValue =
     metric === "cpu" ? (v: number) => formatPct(v, 1) : formatBytes
@@ -152,11 +163,29 @@ export const AppsPanel = memo(function AppsPanel({
   const dimActive = hoveredId !== null && colorById.has(hoveredId)
   const lineOpacity = (id: string) => (dimActive && id !== hoveredId ? 0.12 : 1)
 
+  const toggleOne = (id: string) =>
+    setHidden((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+
+  // Click a name to isolate it; click again (when already solo) to show all.
+  const soloOrReset = (id: string) =>
+    setHidden((prev) => {
+      const isSolo = prev.size === total - 1 && !prev.has(id)
+      return isSolo ? new Set() : new Set(ranked.map((s) => s.id).filter((x) => x !== id))
+    })
+
+  const toggleAll = () =>
+    setHidden(allShown ? new Set(ranked.map((s) => s.id)) : new Set())
+
   return (
     <Card size="sm" className="gap-4">
       <CardHeader>
-        <CardTitle className="flex items-center gap-1.5 text-muted-foreground">
-          <AppWindowMac className="size-4" aria-hidden />
+        <CardTitle className="flex items-center gap-1.5 text-foreground">
+          <AppWindowMac className="size-4 text-muted-foreground" aria-hidden />
           Apps
         </CardTitle>
         <CardAction>
@@ -220,7 +249,7 @@ export const AppsPanel = memo(function AppsPanel({
                   axisLine={false}
                   tickLine={false}
                   tick={{ fontSize: 10 }}
-                  width={44}
+                  width={52}
                 />
                 <ChartTooltip
                   isAnimationActive={false}
@@ -245,7 +274,7 @@ export const AppsPanel = memo(function AppsPanel({
                     />
                   }
                 />
-                {charted.map((s) => (
+                {drawn.map((s) => (
                   <Line
                     key={s.id}
                     dataKey={s.id}
@@ -261,35 +290,21 @@ export const AppsPanel = memo(function AppsPanel({
                 ))}
               </LineChart>
             </ChartContainer>
-
-            <div className="flex flex-wrap gap-x-4 gap-y-1 pt-2">
-              {charted.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  className="flex items-center gap-1.5 text-[11px] text-muted-foreground transition-opacity hover:text-foreground"
-                  style={{ opacity: lineOpacity(s.id) }}
-                  onMouseEnter={() => setHoveredId(s.id)}
-                  onMouseLeave={() => setHoveredId(null)}
-                  onFocus={() => setHoveredId(s.id)}
-                  onBlur={() => setHoveredId(null)}
-                >
-                  <span
-                    aria-hidden
-                    className="h-0.5 w-3 rounded-full"
-                    style={{ backgroundColor: colorById.get(s.id) }}
-                  />
-                  {s.name}
-                </button>
-              ))}
-            </div>
           </CardContent>
 
           <CardContent className="px-0">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="px-4">App</TableHead>
+                  <TableHead className="w-10 px-4">
+                    <Checkbox
+                      checked={allShown}
+                      indeterminate={!allShown && !noneShown}
+                      onCheckedChange={toggleAll}
+                      aria-label="Show all apps"
+                    />
+                  </TableHead>
+                  <TableHead>App</TableHead>
                   <TableHead className="w-24 text-right">CPU avg</TableHead>
                   <TableHead className="w-24 text-right">CPU now</TableHead>
                   <TableHead className="w-28 px-4 text-right">
@@ -309,7 +324,19 @@ export const AppsPanel = memo(function AppsPanel({
                     onMouseLeave={() => setHoveredId(null)}
                   >
                     <TableCell className="px-4">
-                      <span className="flex items-center gap-2">
+                      <Checkbox
+                        checked={isShown(s.id)}
+                        onCheckedChange={() => toggleOne(s.id)}
+                        aria-label={`Show ${s.name}`}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <button
+                        type="button"
+                        className="flex items-center gap-2 text-left transition-colors hover:text-foreground"
+                        onClick={() => soloOrReset(s.id)}
+                        title="Show only this app"
+                      >
                         <AppIcon name={s.name} icon={s.icon} />
                         <span className="truncate text-foreground">
                           {s.name}
@@ -321,7 +348,7 @@ export const AppsPanel = memo(function AppsPanel({
                             style={{ backgroundColor: colorById.get(s.id) }}
                           />
                         )}
-                      </span>
+                      </button>
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground tabular-nums">
                       {formatPct(s.avgCpuPct, 1)}

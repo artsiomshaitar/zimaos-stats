@@ -56,8 +56,8 @@ export const NetworkCard = memo(function NetworkCard({
   return (
     <Card size="sm" className="gap-4">
       <CardHeader>
-        <CardTitle className="flex items-center gap-1.5 text-muted-foreground">
-          <Network className="size-4" aria-hidden />
+        <CardTitle className="flex items-center gap-1.5 text-foreground">
+          <Network className="size-4 text-muted-foreground" aria-hidden />
           Network
         </CardTitle>
         <CardAction className="flex items-baseline gap-3 text-sm font-semibold text-foreground tabular-nums">
@@ -106,7 +106,7 @@ export const NetworkCard = memo(function NetworkCard({
                 axisLine={false}
                 tickLine={false}
                 tick={{ fontSize: 10 }}
-                width={44}
+                width={52}
               />
               <ChartTooltip
                 isAnimationActive={false}
@@ -120,7 +120,18 @@ export const NetworkCard = memo(function NetworkCard({
                     }
                     formatter={(value, name) => (
                       <div className="flex flex-1 items-center justify-between gap-3">
-                        <span className="text-muted-foreground">
+                        <span className="flex items-center gap-1.5 text-muted-foreground">
+                          {name === "up" ? (
+                            <ArrowUp
+                              className="size-3.5 text-[var(--series-net-up)]"
+                              aria-hidden
+                            />
+                          ) : (
+                            <ArrowDown
+                              className="size-3.5 text-[var(--series-net-down)]"
+                              aria-hidden
+                            />
+                          )}
                           {name === "up" ? "Upload" : "Download"}
                         </span>
                         <span className="font-mono font-medium text-foreground tabular-nums">

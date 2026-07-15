@@ -8,12 +8,12 @@ export function formatBytes(n: number | null | undefined): string {
   return `${(n / 1024).toFixed(0)} KB`
 }
 
-/** Compact byte label for axis ticks: 8G / 512M / 0 */
+/** Compact byte label for axis ticks: 8GB / 512MB / 0 */
 export function formatBytesAxis(n: number): string {
   if (n === 0) return "0"
   const gb = n / 1024 ** 3
-  if (gb >= 1) return `${gb >= 10 ? gb.toFixed(0) : gb.toFixed(1)}G`
-  return `${(n / 1024 ** 2).toFixed(0)}M`
+  if (gb >= 1) return `${gb >= 10 ? gb.toFixed(0) : gb.toFixed(1)}GB`
+  return `${(n / 1024 ** 2).toFixed(0)}MB`
 }
 
 export function formatPct(n: number | null | undefined, digits = 0): string {
@@ -39,12 +39,12 @@ export function formatRate(n: number | null | undefined): string {
   return `${(n / 1024).toFixed(1)} kB/s`
 }
 
-/** Compact rate label for axis ticks: 0 / 40k / 2M (per second implied). */
+/** Compact rate label for axis ticks: 0 / 40kB / 2MB (per second implied). */
 export function formatRateAxis(n: number): string {
   if (n === 0) return "0"
   const mb = n / 1024 ** 2
-  if (mb >= 1) return `${mb >= 10 ? mb.toFixed(0) : mb.toFixed(1)}M`
-  return `${(n / 1024).toFixed(0)}k`
+  if (mb >= 1) return `${mb >= 10 ? mb.toFixed(0) : mb.toFixed(1)}MB`
+  return `${(n / 1024).toFixed(0)}kB`
 }
 
 const tickShort = new Intl.DateTimeFormat("en-GB", {

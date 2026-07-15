@@ -44,13 +44,20 @@ export const CpuPowerCard = memo(function CpuPowerCard({
   return (
     <Card size="sm" className="gap-4">
       <CardHeader>
-        <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
-          <TabsList variant="line" className="h-auto p-0 text-muted-foreground">
-            <TabsTrigger value="cpu" className="px-0 pb-1">
+        <Tabs
+          value={tab}
+          onValueChange={(v) => setTab(v as Tab)}
+          className="-translate-y-1"
+        >
+          <TabsList
+            variant="line"
+            className="h-auto gap-3 p-0 text-muted-foreground"
+          >
+            <TabsTrigger value="cpu" className="px-0 pt-0 pb-1">
               <Cpu className="size-4" aria-hidden />
               CPU
             </TabsTrigger>
-            <TabsTrigger value="power" className="px-0 pb-1">
+            <TabsTrigger value="power" className="px-0 pt-0 pb-1">
               <Plug className="size-4" aria-hidden />
               Power
             </TabsTrigger>
@@ -84,6 +91,7 @@ export const CpuPowerCard = memo(function CpuPowerCard({
         {tab === "cpu" ? (
           <MetricAreaChart
             label="CPU"
+            icon={Cpu}
             colorVar="--series-cpu"
             points={cpuPoints}
             fromSec={fromSec}
@@ -95,6 +103,7 @@ export const CpuPowerCard = memo(function CpuPowerCard({
         ) : (
           <MetricAreaChart
             label="Power"
+            icon={Plug}
             colorVar="--series-power"
             points={powerPoints}
             fromSec={fromSec}

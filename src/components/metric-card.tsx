@@ -56,8 +56,8 @@ export const MetricCard = memo(function MetricCard({
   return (
     <Card size="sm" className="gap-4">
       <CardHeader>
-        <CardTitle className="flex items-center gap-1.5 text-muted-foreground">
-          <Icon className="size-4" aria-hidden />
+        <CardTitle className="flex items-center gap-1.5 text-foreground">
+          <Icon className="size-4 text-muted-foreground" aria-hidden />
           {title}
         </CardTitle>
         <CardAction className="flex items-baseline gap-1.5">
@@ -84,6 +84,7 @@ export const MetricCard = memo(function MetricCard({
       >
         <MetricAreaChart
           label={title}
+          icon={Icon}
           colorVar={colorVar}
           points={points}
           fromSec={fromSec}
