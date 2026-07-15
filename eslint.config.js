@@ -15,6 +15,7 @@ export default [
     },
   },
   {
-    ignores: ["eslint.config.js", ".prettierrc"],
+    // src/components/ui is shadcn-generated code
+    ignores: ["eslint.config.js", ".prettierrc", "src/components/ui/**"],
   },
 ]

@@ -13,3 +13,9 @@ todos.json
 
 # typescript
 *.tsbuildinfo
+
+# local collector data
+data/
+*.db
+*.db-shm
+*.db-wal

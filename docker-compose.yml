@@ -1,0 +1,15 @@
+services:
+  zimaos-stats:
+    image: ghcr.io/OWNER/zimaos-stats:latest # replace OWNER, or use `build: .`
+    container_name: zimaos-stats
+    restart: unless-stopped
+    ports:
+      - "3080:3000"
+    environment:
+      HISTORY_DAYS: "7"
+      POLL_INTERVAL_SECONDS: "15"
+    volumes:
+      # Where the SQLite history lives (on ZimaOS use /DATA/AppData/zimaos-stats)
+      - ./data:/data
+      # Read-only Docker socket for per-app CPU/RAM stats (optional but recommended)
+      - /var/run/docker.sock:/var/run/docker.sock:ro

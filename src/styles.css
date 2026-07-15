@@ -84,29 +84,38 @@
 }
 
 .dark {
-    --background: oklch(0.148 0.004 228.8);
-    --foreground: oklch(0.987 0.002 197.1);
-    --card: oklch(0.218 0.008 223.9);
-    --card-foreground: oklch(0.987 0.002 197.1);
-    --popover: oklch(0.218 0.008 223.9);
-    --popover-foreground: oklch(0.987 0.002 197.1);
-    --primary: oklch(0.448 0.119 151.328);
-    --primary-foreground: oklch(0.982 0.018 155.826);
-    --secondary: oklch(0.274 0.006 286.033);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.275 0.011 216.9);
-    --muted-foreground: oklch(0.723 0.014 214.4);
-    --accent: oklch(0.275 0.011 216.9);
-    --accent-foreground: oklch(0.987 0.002 197.1);
+    /* ZimaOS-flavored instrument panel: near-black planes, mint accent */
+    --background: #0d0d0d;
+    --foreground: #f4f4f1;
+    --card: #1a1a19;
+    --card-foreground: #f4f4f1;
+    --popover: #212120;
+    --popover-foreground: #f4f4f1;
+    --primary: #4ad484;
+    --primary-foreground: #0d0d0d;
+    --secondary: #262625;
+    --secondary-foreground: #f4f4f1;
+    --muted: #232322;
+    --muted-foreground: #898781;
+    --accent: #262625;
+    --accent-foreground: #f4f4f1;
     --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.56 0.021 213.5);
-    --chart-1: oklch(0.785 0.115 274.713);
-    --chart-2: oklch(0.585 0.233 277.117);
-    --chart-3: oklch(0.511 0.262 276.966);
-    --chart-4: oklch(0.457 0.24 277.023);
-    --chart-5: oklch(0.398 0.195 277.366);
+    --border: oklch(1 0 0 / 8%);
+    --input: oklch(1 0 0 / 12%);
+    --ring: #4ad484;
+    /* metric identity hues — validated as a set on #1a1a19 */
+    --chart-cpu: #1ea861;
+    --chart-ram: #3987e5;
+    --chart-temp: #d95926;
+    --chart-power: #9085e9;
+    /* categorical slots for per-app series (validated dark order) */
+    --chart-1: #3987e5;
+    --chart-2: #008300;
+    --chart-3: #d55181;
+    --chart-4: #c98500;
+    --chart-5: #199e70;
+    /* chart chrome */
+    --gridline: #2c2c2a;
     --sidebar: oklch(0.218 0.008 223.9);
     --sidebar-foreground: oklch(0.987 0.002 197.1);
     --sidebar-primary: oklch(0.723 0.219 149.579);
