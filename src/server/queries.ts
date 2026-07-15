@@ -46,7 +46,9 @@ function bucketSize(
 ): number {
   const span = Math.max(1, toSec - fromSec)
   const raw = Math.max(floorSec, Math.ceil(span / maxPoints))
-  return NICE_BUCKETS.find((b) => b >= raw) ?? NICE_BUCKETS[NICE_BUCKETS.length - 1]
+  return (
+    NICE_BUCKETS.find((b) => b >= raw) ?? NICE_BUCKETS[NICE_BUCKETS.length - 1]
+  )
 }
 
 export function getSummary(): Summary {

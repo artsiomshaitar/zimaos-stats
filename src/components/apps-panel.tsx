@@ -1,15 +1,34 @@
 import { memo, useMemo, useState } from "react"
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 
-import { Card } from "@/components/ui/card"
-import { ChartContainer, ChartTooltip } from "@/components/ui/chart"
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import type { ChartConfig } from "@/components/ui/chart"
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { StatsTooltipFrame } from "@/components/stats-tooltip"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import {
   formatBytes,
   formatBytesAxis,
   formatPct,
   formatTick,
+  formatTooltipTime,
   niceTimeTicks,
 } from "@/lib/format"
 import type { ContainerSeries } from "@/server/queries"
@@ -100,6 +119,11 @@ export const AppsPanel = memo(function AppsPanel({
   const charted = ranked.slice(0, MAX_CHARTED)
   const colorById = assignSlots(charted.map((c) => c.id))
 
+  const chartConfig: ChartConfig = Object.fromEntries(
+    charted.map((s) => [s.id, { label: s.name, color: colorById.get(s.id) }])
+  )
+  const nameById = new Map(charted.map((s) => [s.id, s.name]))
+
   const rows = useMemo(() => {
     const byTs = new Map<
       number,
@@ -128,47 +152,48 @@ export const AppsPanel = memo(function AppsPanel({
   const lineOpacity = (id: string) => (dimActive && id !== hoveredId ? 0.12 : 1)
 
   return (
-    <Card className="gap-0 rounded-xl border-border bg-card p-0">
-      <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
-        <h2 className="text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase">
-          Apps
-        </h2>
-        <Tabs value={metric} onValueChange={(v) => setMetric(v as Metric)}>
-          <TabsList className="h-7">
-            <TabsTrigger value="cpu" className="px-3 text-[11px]">
-              CPU
-            </TabsTrigger>
-            <TabsTrigger value="ram" className="px-3 text-[11px]">
-              RAM
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
+    <Card size="sm" className="gap-4">
+      <CardHeader>
+        <CardTitle className="text-muted-foreground">Apps</CardTitle>
+        <CardAction>
+          <Tabs value={metric} onValueChange={(v) => setMetric(v as Metric)}>
+            <TabsList className="h-7">
+              <TabsTrigger value="cpu" className="px-3 text-[11px]">
+                CPU
+              </TabsTrigger>
+              <TabsTrigger value="ram" className="px-3 text-[11px]">
+                RAM
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </CardAction>
+      </CardHeader>
 
       {series.length === 0 ? (
-        <div className="flex h-40 flex-col items-center justify-center gap-1 px-6 pb-4 text-center">
-          <p className="text-xs text-foreground">No app data recorded yet.</p>
-          <p className="text-xs text-muted-foreground">
-            Mount /var/run/docker.sock into this container to record per-app CPU
-            and RAM.
-          </p>
-        </div>
+        <CardContent>
+          <div className="flex h-40 flex-col items-center justify-center gap-1 text-center">
+            <p className="text-xs text-foreground">No app data recorded yet.</p>
+            <p className="text-xs text-muted-foreground">
+              Mount /var/run/docker.sock into this container to record per-app
+              CPU and RAM.
+            </p>
+          </div>
+        </CardContent>
       ) : (
         <>
-          <div
-            className="px-1 transition-opacity duration-300"
+          <CardContent
+            className="px-2 transition-opacity duration-300"
             style={{ opacity: isRefreshing ? 0.6 : 1 }}
           >
-            <ChartContainer config={{}} className="aspect-auto h-48 w-full">
+            <ChartContainer
+              config={chartConfig}
+              className="aspect-auto h-48 w-full"
+            >
               <LineChart
                 data={rows}
                 margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
               >
-                <CartesianGrid
-                  vertical={false}
-                  stroke="var(--gridline)"
-                  strokeWidth={1}
-                />
+                <CartesianGrid vertical={false} />
                 <XAxis
                   dataKey="ts"
                   type="number"
@@ -194,112 +219,92 @@ export const AppsPanel = memo(function AppsPanel({
                   width={44}
                 />
                 <ChartTooltip
-                  cursor={{
-                    stroke: "var(--muted-foreground)",
-                    strokeWidth: 1,
-                    strokeOpacity: 0.4,
-                  }}
                   isAnimationActive={false}
-                  content={({ active, payload }) => {
-                    if (!active || payload.length === 0) return null
-                    const ts = (payload[0].payload as { ts: number }).ts
-                    const tooltipRows = charted
-                      .map((s) => {
-                        const v = (
-                          payload[0].payload as Record<string, number | null>
-                        )[s.id]
-                        return v == null
-                          ? null
-                          : {
-                              color:
-                                colorById.get(s.id) ??
-                                "var(--muted-foreground)",
-                              name: s.name,
-                              value: fmtValue(v),
-                            }
-                      })
-                      .filter((r) => r !== null)
-                    if (!tooltipRows.length) return null
-                    return <StatsTooltipFrame tsSec={ts} rows={tooltipRows} />
-                  }}
+                  content={
+                    <ChartTooltipContent
+                      indicator="line"
+                      labelFormatter={(_, payload) =>
+                        formatTooltipTime(
+                          Number((payload[0]?.payload as { ts: number }).ts)
+                        )
+                      }
+                      formatter={(value, name) => (
+                        <div className="flex flex-1 items-center justify-between gap-3">
+                          <span className="text-muted-foreground">
+                            {nameById.get(String(name)) ?? String(name)}
+                          </span>
+                          <span className="font-mono font-medium text-foreground tabular-nums">
+                            {fmtValue(Number(value))}
+                          </span>
+                        </div>
+                      )}
+                    />
+                  }
                 />
                 {charted.map((s) => (
                   <Line
                     key={s.id}
                     dataKey={s.id}
                     type="monotone"
-                    stroke={colorById.get(s.id)}
+                    stroke={`var(--color-${s.id})`}
                     strokeWidth={dimActive && s.id === hoveredId ? 2.5 : 2}
                     strokeOpacity={lineOpacity(s.id)}
                     dot={false}
-                    activeDot={{
-                      r: 4,
-                      fill: colorById.get(s.id),
-                      stroke: "var(--card)",
-                      strokeWidth: 2,
-                    }}
+                    activeDot={{ r: 4 }}
                     connectNulls={false}
                     isAnimationActive={false}
                   />
                 ))}
               </LineChart>
             </ChartContainer>
-          </div>
 
-          <div
-            className="flex flex-wrap gap-x-4 gap-y-1 px-4 pt-2 pb-1"
-            role="list"
-            aria-label="Charted apps"
-          >
-            {charted.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                className="flex items-center gap-1.5 text-[11px] text-muted-foreground transition-opacity hover:text-foreground"
-                style={{ opacity: lineOpacity(s.id) }}
-                onMouseEnter={() => setHoveredId(s.id)}
-                onMouseLeave={() => setHoveredId(null)}
-                onFocus={() => setHoveredId(s.id)}
-                onBlur={() => setHoveredId(null)}
-              >
-                <span
-                  aria-hidden
-                  className="h-0.5 w-3 rounded-full"
-                  style={{ backgroundColor: colorById.get(s.id) }}
-                />
-                {s.name}
-              </button>
-            ))}
-          </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 pt-2">
+              {charted.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  className="flex items-center gap-1.5 text-[11px] text-muted-foreground transition-opacity hover:text-foreground"
+                  style={{ opacity: lineOpacity(s.id) }}
+                  onMouseEnter={() => setHoveredId(s.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  onFocus={() => setHoveredId(s.id)}
+                  onBlur={() => setHoveredId(null)}
+                >
+                  <span
+                    aria-hidden
+                    className="h-0.5 w-3 rounded-full"
+                    style={{ backgroundColor: colorById.get(s.id) }}
+                  />
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          </CardContent>
 
-          <div className="mt-2 border-t border-border">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="text-left text-[10px] tracking-[0.1em] text-muted-foreground uppercase">
-                  <th className="px-4 py-2 font-medium">App</th>
-                  <th className="w-24 px-2 py-2 text-right font-medium">
-                    CPU avg
-                  </th>
-                  <th className="w-24 px-2 py-2 text-right font-medium">
-                    CPU now
-                  </th>
-                  <th className="w-28 px-4 py-2 text-right font-medium">
+          <CardContent className="px-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="px-4">App</TableHead>
+                  <TableHead className="w-24 text-right">CPU avg</TableHead>
+                  <TableHead className="w-24 text-right">CPU now</TableHead>
+                  <TableHead className="w-28 px-4 text-right">
                     RAM now
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {ranked.map((s) => (
-                  <tr
+                  <TableRow
                     key={s.id}
-                    className="border-t border-border/50 transition-opacity hover:bg-secondary/40"
+                    className="transition-opacity"
                     style={{
                       opacity: dimActive && s.id !== hoveredId ? 0.4 : 1,
                     }}
                     onMouseEnter={() => setHoveredId(s.id)}
                     onMouseLeave={() => setHoveredId(null)}
                   >
-                    <td className="px-4 py-2">
+                    <TableCell className="px-4">
                       <span className="flex items-center gap-2">
                         <AppIcon name={s.name} icon={s.icon} />
                         <span className="truncate text-foreground">
@@ -313,21 +318,21 @@ export const AppsPanel = memo(function AppsPanel({
                           />
                         )}
                       </span>
-                    </td>
-                    <td className="px-2 py-2 text-right text-muted-foreground tabular-nums">
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground tabular-nums">
                       {formatPct(s.avgCpuPct, 1)}
-                    </td>
-                    <td className="px-2 py-2 text-right text-foreground tabular-nums">
+                    </TableCell>
+                    <TableCell className="text-right text-foreground tabular-nums">
                       {s.lastCpuPct == null ? "—" : formatPct(s.lastCpuPct, 1)}
-                    </td>
-                    <td className="px-4 py-2 text-right text-foreground tabular-nums">
+                    </TableCell>
+                    <TableCell className="px-4 text-right text-foreground tabular-nums">
                       {formatBytes(s.lastMemUsed)}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+          </CardContent>
         </>
       )}
     </Card>

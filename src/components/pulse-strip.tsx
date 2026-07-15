@@ -61,7 +61,7 @@ export const PulseStrip = memo(function PulseStrip({
         </defs>
         {areaPath && (
           <>
-            <path d={areaPath} fill="var(--gridline)" opacity={0.6} />
+            <path d={areaPath} fill="var(--muted)" opacity={0.6} />
             <path
               d={linePath}
               fill="none"
@@ -71,7 +71,7 @@ export const PulseStrip = memo(function PulseStrip({
               vectorEffect="non-scaling-stroke"
             />
             <g clipPath="url(#pulse-sel)">
-              <path d={areaPath} fill="var(--chart-cpu)" opacity={0.18} />
+              <path d={areaPath} fill="var(--primary)" opacity={0.18} />
               <path
                 d={linePath}
                 fill="none"

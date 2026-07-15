@@ -17,7 +17,12 @@ export function resolveDeviceName(envName: string | null): string {
   if (envName) return envName
   if (typeof window === "undefined") return FALLBACK
   const host = window.location.hostname
-  if (!host || host === "localhost" || /^[\d.]+$/.test(host) || host.includes(":")) {
+  if (
+    !host ||
+    host === "localhost" ||
+    /^[\d.]+$/.test(host) ||
+    host.includes(":")
+  ) {
     return FALLBACK
   }
   return titleize(host.replace(/\.local$/i, "").split(".")[0])

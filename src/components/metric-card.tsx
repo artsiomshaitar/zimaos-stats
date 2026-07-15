@@ -1,14 +1,24 @@
 import { memo } from "react"
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
 
-import { Card } from "@/components/ui/card"
-import { ChartContainer, ChartTooltip } from "@/components/ui/chart"
-import { StatsTooltipFrame } from "@/components/stats-tooltip"
-import { formatTick, niceTimeTicks } from "@/lib/format"
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import type { ChartConfig } from "@/components/ui/chart"
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart"
+import { formatTick, formatTooltipTime, niceTimeTicks } from "@/lib/format"
 
 export interface MetricCardProps {
   title: string
-  colorVar: string // e.g. "--chart-cpu"
+  colorVar: string // a preset chart token, e.g. "--chart-1"
   currentValue: string
   currentSub?: string
   points: Array<{ ts: number; value: number | null }>
@@ -42,15 +52,16 @@ export const MetricCard = memo(function MetricCard({
   const spanSec = toSec - fromSec
   const ticks = niceTimeTicks(fromSec, toSec)
   const hasData = points.some((p) => p.value != null)
-  const color = `var(${colorVar})`
+
+  const chartConfig = {
+    value: { label: title, color: `var(${colorVar})` },
+  } satisfies ChartConfig
 
   return (
-    <Card className="gap-0 overflow-hidden rounded-xl border-border bg-card p-0">
-      <div className="flex items-baseline justify-between px-4 pt-3.5 pb-1">
-        <h2 className="text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase">
-          {title}
-        </h2>
-        <div className="flex items-baseline gap-1.5">
+    <Card size="sm" className="gap-4">
+      <CardHeader>
+        <CardTitle className="text-muted-foreground">{title}</CardTitle>
+        <CardAction className="flex items-baseline gap-1.5">
           <span className="text-xl font-semibold text-foreground">
             {currentValue}
           </span>
@@ -59,23 +70,22 @@ export const MetricCard = memo(function MetricCard({
               {currentSub}
             </span>
           )}
-        </div>
-      </div>
-      <div
-        className="px-1 pb-1 transition-opacity duration-300"
+        </CardAction>
+      </CardHeader>
+      <CardContent
+        className="px-2 transition-opacity duration-300"
         style={{ opacity: isRefreshing ? 0.6 : 1 }}
       >
         {hasData ? (
-          <ChartContainer config={{}} className="aspect-auto h-36 w-full">
+          <ChartContainer
+            config={chartConfig}
+            className="aspect-auto h-36 w-full"
+          >
             <AreaChart
               data={points}
               margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
             >
-              <CartesianGrid
-                vertical={false}
-                stroke="var(--gridline)"
-                strokeWidth={1}
-              />
+              <CartesianGrid vertical={false} />
               <XAxis
                 dataKey="ts"
                 type="number"
@@ -97,54 +107,45 @@ export const MetricCard = memo(function MetricCard({
                 width={44}
               />
               <ChartTooltip
-                cursor={{
-                  stroke: "var(--muted-foreground)",
-                  strokeWidth: 1,
-                  strokeOpacity: 0.4,
-                }}
                 isAnimationActive={false}
-                content={({ active, payload }) => {
-                  if (!active || payload.length === 0) return null
-                  const p = payload[0].payload as {
-                    ts: number
-                    value: number | null
-                  }
-                  if (p.value == null) return null
-                  return (
-                    <StatsTooltipFrame
-                      tsSec={p.ts}
-                      rows={[
-                        { color, name: title, value: formatValue(p.value) },
-                      ]}
-                    />
-                  )
-                }}
+                content={
+                  <ChartTooltipContent
+                    indicator="line"
+                    labelFormatter={(_, payload) =>
+                      formatTooltipTime(
+                        Number((payload[0]?.payload as { ts: number }).ts)
+                      )
+                    }
+                    formatter={(value) => (
+                      <div className="flex flex-1 items-center justify-between gap-3">
+                        <span className="text-muted-foreground">{title}</span>
+                        <span className="font-mono font-medium text-foreground tabular-nums">
+                          {formatValue(Number(value))}
+                        </span>
+                      </div>
+                    )}
+                  />
+                }
               />
               <Area
                 dataKey="value"
                 type="monotone"
-                stroke={color}
+                stroke="var(--color-value)"
                 strokeWidth={2}
-                fill={color}
+                fill="var(--color-value)"
                 fillOpacity={0.1}
                 dot={false}
-                activeDot={{
-                  r: 4,
-                  fill: color,
-                  stroke: "var(--card)",
-                  strokeWidth: 2,
-                }}
                 connectNulls={false}
                 isAnimationActive={false}
               />
             </AreaChart>
           </ChartContainer>
         ) : (
-          <div className="flex h-36 items-center justify-center px-4 text-center text-xs text-muted-foreground">
+          <div className="flex h-36 items-center justify-center px-2 text-center text-xs text-muted-foreground">
             {emptyHint ?? "No samples in this range yet."}
           </div>
         )}
-      </div>
+      </CardContent>
     </Card>
   )
 })
