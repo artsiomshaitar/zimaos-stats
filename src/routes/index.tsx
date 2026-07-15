@@ -220,7 +220,7 @@ function Dashboard() {
           toSec={toSec}
           formatValue={formatWatts}
           formatAxis={(v) => `${Math.round(v)} W`}
-          emptyHint="Power readings need Intel RAPL (/sys/class/powercap)."
+          emptyHint="Docker hides power sensors by default — add a volume from /sys/devices/virtual/powercap to /powercap and restart."
           isRefreshing={isRefreshing}
         />
       </section>

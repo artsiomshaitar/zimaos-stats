@@ -13,3 +13,6 @@ services:
       - ./data:/data
       # Read-only Docker socket for per-app CPU/RAM stats (optional but recommended)
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Host power sensors — Docker masks /sys/devices/virtual/powercap inside
+      # containers, so bind it to /powercap for wattage readings (Linux hosts)
+      - /sys/devices/virtual/powercap:/powercap:ro

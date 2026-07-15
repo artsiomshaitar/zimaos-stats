@@ -125,11 +125,22 @@ interface RaplDomain {
   lastEnergy: number | null
 }
 
+// Docker masks /sys/devices/virtual/powercap inside containers (RAPL
+// side-channel mitigation), and /sys/class/powercap is symlinks into it. The
+// documented workaround is bind-mounting the host's powercap dir to /powercap,
+// which these candidate roots pick up. POWERCAP_PATH overrides everything.
+const RAPL_ROOTS = [
+  process.env.POWERCAP_PATH,
+  "/sys/class/powercap",
+  "/powercap/intel-rapl",
+  "/powercap",
+  "/sys/devices/virtual/powercap/intel-rapl",
+].filter((r) => r != null)
+
 function findRaplDomains(): Array<RaplDomain> {
-  const base = "/sys/class/powercap"
-  try {
-    return (
-      readdirSync(base)
+  for (const base of RAPL_ROOTS) {
+    try {
+      const domains = readdirSync(base)
         // top-level package domains only, e.g. intel-rapl:0 (skip subdomains like intel-rapl:0:1)
         .filter((d) => /^intel-rapl:\d+$/.test(d))
         .map((d) => ({
@@ -140,10 +151,12 @@ function findRaplDomains(): Array<RaplDomain> {
           lastEnergy: null,
         }))
         .filter((d) => readNumberFile(d.energyPath) !== null)
-    )
-  } catch {
-    return []
+      if (domains.length > 0) return domains
+    } catch {
+      continue
+    }
   }
+  return []
 }
 
 export class HostMetricsSource implements MetricsSource {

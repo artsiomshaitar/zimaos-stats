@@ -14,8 +14,8 @@ per-app (container) CPU/RAM over time and shows them on a dashboard.
 
 **Fast way — import:** click the import icon in the top-right of the customized-app
 dialog and paste the contents of [`zimaos-app.yml`](zimaos-app.yml). It prefills the
-image, title, icon, port, both volumes, and the env vars with their defaults — review
-and hit Install.
+image, title, icon, port, all three volumes, and the env vars with their defaults —
+review and hit Install.
 
 **Manual way:** fill in the settings dialog like this:
 
@@ -29,13 +29,27 @@ and hit Install.
 | Ports | host `3080` → container `3000` (TCP) |
 | Volumes | host `/DATA/AppData/zimaos-stats` → container `/data` |
 | Volumes | host `/var/run/docker.sock` → container `/var/run/docker.sock` |
+| Volumes | host `/sys/devices/virtual/powercap` → container `/powercap` |
 | Environment variables | optional, see below |
 | Privileges / Memory limit / CPU shares | off / default / Low |
 
 The Docker socket volume is what enables the per-app section. Without it the app still
-records system metrics. Temperature and power are read from the host's `/sys` (visible
-inside containers by default); power needs an Intel CPU (RAPL) — that covers ZimaBoard
-and ZimaCube.
+records system metrics. Temperature comes from the host's `/sys` (visible inside
+containers by default). Power needs the `/powercap` volume: Docker masks
+`/sys/devices/virtual/powercap` inside containers as a side-channel mitigation, so the
+host's RAPL counters (Intel CPUs — ZimaBoard/ZimaCube) must be bind-mounted in
+explicitly.
+
+## Updating
+
+Releases are tagged (`0.1.0`, `0.2.0`, …) because ZimaOS's "check and update" compares
+tags — re-pushing `latest` doesn't register as an update. To update: open the app's
+settings in ZimaOS, change the **Tag** to the new version, save — it pulls and
+recreates. New versions are published by pushing a git tag:
+
+```sh
+git tag v0.2.0 && git push --tags
+```
 
 ## Configuration
 

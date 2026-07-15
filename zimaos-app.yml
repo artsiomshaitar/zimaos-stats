@@ -4,7 +4,7 @@
 name: zimaos-stats
 services:
   zimaos-stats:
-    image: ghcr.io/artsiomshaitar/zimaos-stats:latest
+    image: ghcr.io/artsiomshaitar/zimaos-stats:0.1.0
     container_name: zimaos-stats
     restart: unless-stopped
     ports:
@@ -21,6 +21,10 @@ services:
       - type: bind
         source: /var/run/docker.sock
         target: /var/run/docker.sock
+      - type: bind
+        source: /sys/devices/virtual/powercap
+        target: /powercap
+        read_only: true
     x-casaos:
       envs:
         - container: HISTORY_DAYS
@@ -40,6 +44,9 @@ services:
         - container: /var/run/docker.sock
           description:
             en_us: Docker socket (read) for per-app CPU/RAM stats
+        - container: /powercap
+          description:
+            en_us: Host power sensors (Docker masks RAPL by default)
 x-casaos:
   architectures:
     - amd64
