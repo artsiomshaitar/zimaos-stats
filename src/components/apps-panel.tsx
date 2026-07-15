@@ -87,6 +87,7 @@ export const AppsPanel = memo(function AppsPanel({
   isRefreshing?: boolean
 }) {
   const [metric, setMetric] = useState<Metric>("cpu")
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
   const spanSec = toSec - fromSec
   const ticks = niceTimeTicks(fromSec, toSec)
 
@@ -121,6 +122,10 @@ export const AppsPanel = memo(function AppsPanel({
     metric === "cpu" ? (v: number) => formatPct(v, 1) : formatBytes
   const fmtAxis =
     metric === "cpu" ? (v: number) => formatPct(v) : formatBytesAxis
+
+  // Dimming only kicks in when the hovered app is actually one of the plotted lines.
+  const dimActive = hoveredId !== null && colorById.has(hoveredId)
+  const lineOpacity = (id: string) => (dimActive && id !== hoveredId ? 0.12 : 1)
 
   return (
     <Card className="gap-0 rounded-xl border-border bg-card p-0">
@@ -224,7 +229,8 @@ export const AppsPanel = memo(function AppsPanel({
                     dataKey={s.id}
                     type="monotone"
                     stroke={colorById.get(s.id)}
-                    strokeWidth={2}
+                    strokeWidth={dimActive && s.id === hoveredId ? 2.5 : 2}
+                    strokeOpacity={lineOpacity(s.id)}
                     dot={false}
                     activeDot={{
                       r: 4,
@@ -246,10 +252,15 @@ export const AppsPanel = memo(function AppsPanel({
             aria-label="Charted apps"
           >
             {charted.map((s) => (
-              <span
+              <button
                 key={s.id}
-                role="listitem"
-                className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
+                type="button"
+                className="flex items-center gap-1.5 text-[11px] text-muted-foreground transition-opacity hover:text-foreground"
+                style={{ opacity: lineOpacity(s.id) }}
+                onMouseEnter={() => setHoveredId(s.id)}
+                onMouseLeave={() => setHoveredId(null)}
+                onFocus={() => setHoveredId(s.id)}
+                onBlur={() => setHoveredId(null)}
               >
                 <span
                   aria-hidden
@@ -257,7 +268,7 @@ export const AppsPanel = memo(function AppsPanel({
                   style={{ backgroundColor: colorById.get(s.id) }}
                 />
                 {s.name}
-              </span>
+              </button>
             ))}
           </div>
 
@@ -279,7 +290,15 @@ export const AppsPanel = memo(function AppsPanel({
               </thead>
               <tbody>
                 {ranked.map((s) => (
-                  <tr key={s.id} className="border-t border-border/50">
+                  <tr
+                    key={s.id}
+                    className="border-t border-border/50 transition-opacity hover:bg-secondary/40"
+                    style={{
+                      opacity: dimActive && s.id !== hoveredId ? 0.4 : 1,
+                    }}
+                    onMouseEnter={() => setHoveredId(s.id)}
+                    onMouseLeave={() => setHoveredId(null)}
+                  >
                     <td className="px-4 py-2">
                       <span className="flex items-center gap-2">
                         <AppIcon name={s.name} icon={s.icon} />

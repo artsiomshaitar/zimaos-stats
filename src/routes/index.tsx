@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 
 import { AppsPanel } from "@/components/apps-panel"
+import { Logo } from "@/components/logo"
 import { MetricCard } from "@/components/metric-card"
 import { PulseStrip } from "@/components/pulse-strip"
 import { Badge } from "@/components/ui/badge"
@@ -124,7 +125,6 @@ function Dashboard() {
     secondsSinceSample > Math.max(10, summary.pollIntervalSeconds * 5)
       ? secondsSinceSample
       : null
-  const stale = staleSinceSec !== null
 
   const metricPoints = useMemo(() => {
     const pick = (key: keyof SystemPoint) =>
@@ -141,17 +141,9 @@ function Dashboard() {
     <main className="mx-auto flex min-h-svh max-w-5xl flex-col gap-3 px-4 py-5 md:px-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <span className="relative flex h-2 w-2" aria-hidden>
-            <span
-              className={`absolute inline-flex h-full w-full rounded-full ${stale ? "bg-muted-foreground" : "animate-ping bg-primary/60"}`}
-              style={{ animationDuration: "2.5s" }}
-            />
-            <span
-              className={`relative inline-flex h-2 w-2 rounded-full ${stale ? "bg-muted-foreground" : "bg-primary"}`}
-            />
-          </span>
+          <Logo className="h-7 w-7 rounded-[8px]" />
           <h1 className="text-sm font-semibold tracking-tight text-foreground">
-            zimaos-stats
+            ZimaOS Stats
           </h1>
           {summary.mode === "demo" && (
             <Badge variant="secondary" className="text-[10px]">
@@ -266,9 +258,7 @@ function Dashboard() {
       />
 
       <footer className="pb-2 text-center text-[10px] text-muted-foreground">
-        v{summary.version} · sampling {summary.pollIntervalSeconds}s (apps{" "}
-        {summary.containerPollIntervalSeconds}s) · keeping {summary.historyDays}{" "}
-        days · {summary.mode} mode
+        v{summary.version}
       </footer>
     </main>
   )
