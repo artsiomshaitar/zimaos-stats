@@ -30,6 +30,13 @@ export interface Summary {
   latest: SystemPoint | null
 }
 
+// Human-sized aggregation steps. Charts get AVG-per-bucket rows, and the
+// bucket snaps to the smallest of these that keeps the range under maxPoints:
+// 10m range → 2s buckets, 24h → 5min, 7d → 30min.
+const NICE_BUCKETS = [
+  2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 14400,
+]
+
 function bucketSize(
   fromSec: number,
   toSec: number,
@@ -37,7 +44,8 @@ function bucketSize(
   floorSec: number
 ): number {
   const span = Math.max(1, toSec - fromSec)
-  return Math.max(floorSec, Math.ceil(span / maxPoints))
+  const raw = Math.max(floorSec, Math.ceil(span / maxPoints))
+  return NICE_BUCKETS.find((b) => b >= raw) ?? NICE_BUCKETS[NICE_BUCKETS.length - 1]
 }
 
 export function getSummary(): Summary {

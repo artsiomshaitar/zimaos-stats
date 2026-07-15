@@ -101,7 +101,8 @@ function Dashboard() {
               .catch(() => {})
           }, LIVE_SUMMARY_MS)
         : null
-    const clock = setInterval(() => forceTick((n) => n + 1), 1000)
+    // Only drives the staleness check now (no visible seconds counter).
+    const clock = setInterval(() => forceTick((n) => n + 1), 5000)
     return () => {
       clearInterval(poll)
       if (live) clearInterval(live)
@@ -117,9 +118,13 @@ function Dashboard() {
   const secondsSinceSample = latest
     ? Math.floor(Date.now() / 1000) - latest.ts
     : null
-  const stale =
+  // Seconds since the last sample, but only once it's overdue — null while healthy.
+  const staleSinceSec =
     secondsSinceSample !== null &&
     secondsSinceSample > Math.max(10, summary.pollIntervalSeconds * 5)
+      ? secondsSinceSample
+      : null
+  const stale = staleSinceSec !== null
 
   const metricPoints = useMemo(() => {
     const pick = (key: keyof SystemPoint) =>
@@ -155,13 +160,11 @@ function Dashboard() {
           )}
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-[11px] text-muted-foreground">
-            {secondsSinceSample === null
-              ? "no samples yet"
-              : stale
-                ? `last sample ${formatAgo(secondsSinceSample)}`
-                : `updated ${formatAgo(secondsSinceSample)}`}
-          </span>
+          {staleSinceSec !== null && (
+            <span className="text-[11px] text-muted-foreground">
+              last sample {formatAgo(staleSinceSec)}
+            </span>
+          )}
           <ToggleGroup
             value={[rangeKey]}
             onValueChange={(vals: Array<unknown>) => {
