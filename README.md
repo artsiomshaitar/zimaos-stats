@@ -62,6 +62,7 @@ by editing the Tag field in the app's settings.
 | `PORT` | `3000` | HTTP port inside the container. |
 | `DB_PATH` | `/data/zimaos-stats.db` | SQLite file location (point a volume at `/data`). |
 | `DOCKER_SOCKET` | `/var/run/docker.sock` | Docker socket path for per-app stats. |
+| `DEVICE_NAME` | *(hostname)* | Display name in the heading and browser tab. Defaults to the hostname you open the app with (`t800.local` → `T800`). |
 | `COLLECTOR_MODE` | `auto` | `auto` / `host` / `demo`. `auto` falls back to demo data when host metrics aren't readable (e.g. developing on macOS). |
 
 Storage footprint: system samples at 2s for 7 days are ~300k rows, plus ~40k rows per

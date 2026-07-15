@@ -12,6 +12,8 @@ export type CollectorMode = "auto" | "host" | "demo"
 
 export const config = {
   version: pkg.version,
+  /** Optional display name override; falls back to the browser hostname. */
+  deviceName: process.env.DEVICE_NAME?.trim() || null,
   /** How many days of samples to keep. */
   historyDays: envInt("HISTORY_DAYS", 7, 1, 365),
   /**

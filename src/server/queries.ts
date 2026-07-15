@@ -24,6 +24,7 @@ export interface ContainerSeries {
 export interface Summary {
   mode: "host" | "demo"
   version: string
+  deviceName: string | null
   pollIntervalSeconds: number
   containerPollIntervalSeconds: number
   historyDays: number
@@ -60,6 +61,7 @@ export function getSummary(): Summary {
   return {
     mode: collectorMode(),
     version: config.version,
+    deviceName: config.deviceName,
     pollIntervalSeconds: config.pollIntervalSeconds,
     containerPollIntervalSeconds: config.containerPollIntervalSeconds,
     historyDays: config.historyDays,

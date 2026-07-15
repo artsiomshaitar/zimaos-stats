@@ -17,6 +17,7 @@ services:
       - HISTORY_DAYS=7
       - POLL_INTERVAL_SECONDS=2
       - CONTAINER_POLL_INTERVAL_SECONDS=15
+      # - DEVICE_NAME=T800  # optional; defaults to the hostname you connect via
     volumes:
       - type: bind
         source: /DATA/AppData/zimaos-stats
@@ -39,6 +40,9 @@ services:
         - container: CONTAINER_POLL_INTERVAL_SECONDS
           description:
             en_us: Seconds between per-app Docker stats samples (2-3600)
+        - container: DEVICE_NAME
+          description:
+            en_us: Display name (optional; defaults to the hostname you open the app with)
       ports:
         - container: "3000"
           description:

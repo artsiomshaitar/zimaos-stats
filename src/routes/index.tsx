@@ -5,6 +5,7 @@ import { AppsPanel } from "@/components/apps-panel"
 import { Logo } from "@/components/logo"
 import { MetricCard } from "@/components/metric-card"
 import { PulseStrip } from "@/components/pulse-strip"
+import { resolveDeviceName } from "@/lib/device"
 import { Badge } from "@/components/ui/badge"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
@@ -137,13 +138,35 @@ function Dashboard() {
     }
   }, [system])
 
+  // Derived on the client from the connected hostname (or DEVICE_NAME env).
+  const [deviceName, setDeviceName] = useState(() =>
+    resolveDeviceName(summary.deviceName)
+  )
+  useEffect(() => {
+    setDeviceName(resolveDeviceName(summary.deviceName))
+  }, [summary.deviceName])
+
+  // Tab title: "T800 - 3w/40° 5%/2.1gb", tracking the live current values.
+  useEffect(() => {
+    const parts: Array<string> = []
+    if (latest?.powerW != null) parts.push(`${latest.powerW.toFixed(1)}w`)
+    if (latest?.tempC != null) parts.push(`${Math.round(latest.tempC)}°`)
+    const energy = parts.join("/")
+    const load: Array<string> = []
+    if (latest?.cpuPct != null) load.push(`${Math.round(latest.cpuPct)}%`)
+    if (latest?.memUsed != null)
+      load.push(`${(latest.memUsed / 1024 ** 3).toFixed(1)}gb`)
+    const tail = [energy, load.join("/")].filter(Boolean).join(" ")
+    document.title = tail ? `${deviceName} - ${tail}` : `${deviceName} Stats`
+  }, [deviceName, latest])
+
   return (
     <main className="mx-auto flex min-h-svh max-w-5xl flex-col gap-3 px-4 py-5 md:px-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <Logo className="h-7 w-7 rounded-[8px]" />
           <h1 className="text-sm font-semibold tracking-tight text-foreground">
-            ZimaOS Stats
+            {deviceName} Stats
           </h1>
           {summary.mode === "demo" && (
             <Badge variant="secondary" className="text-[10px]">
