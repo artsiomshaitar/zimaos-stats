@@ -101,12 +101,13 @@ docker compose up -d
 
 ```sh
 bun install
-bun run dev        # http://localhost:3000 — uses demo data on macOS
-bun run build      # production build
-bun run start      # serve the production build (node serve.mjs)
+bun run dev         # http://localhost:3000 — uses demo data on macOS
+bun run build       # production build
+bun run start       # serve the production build (bun serve.mjs)
+bun run db:generate # regenerate Drizzle migrations after editing the schema
 ```
 
-Requires Node 24 (built-in `node:sqlite`) and Bun.
+Runs on **Bun** (uses the built-in `bun:sqlite`, so no native modules).
 
 ## How it works
 
@@ -115,7 +116,10 @@ Requires Node 24 (built-in `node:sqlite`) and Bun.
   - CPU: `/proc/stat` deltas · RAM: `/proc/meminfo`
   - Temperature: best thermal zone in `/sys/class/thermal` (falls back to hwmon)
   - Power: Intel RAPL energy counters in `/sys/class/powercap`
+  - Network: `/proc/net/dev` byte-counter deltas across physical interfaces
   - Per-app: Docker API one-shot stats over the socket, CPU% computed from deltas
-- Samples land in SQLite (WAL). An hourly job prunes rows older than `HISTORY_DAYS`.
+- Storage is SQLite via **Drizzle ORM** (`drizzle-orm/bun-sqlite`). The schema lives in
+  `src/server/schema.ts`; migrations in `drizzle/` are applied on startup. WAL mode; an
+  hourly job prunes rows older than `HISTORY_DAYS`.
 - The dashboard (TanStack Start + shadcn + Recharts) queries bucketed averages via
-  server functions and refreshes every 30s.
+  server functions and refreshes on the selected range's cadence.

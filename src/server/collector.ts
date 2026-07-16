@@ -1,3 +1,5 @@
+import { lt, sql } from "drizzle-orm"
+
 import { config } from "./config"
 import { getDb } from "./db"
 import {
@@ -6,6 +8,7 @@ import {
   demoSystemAt,
 } from "./demo-metrics"
 import { HostMetricsSource, hostIsReadable } from "./host-metrics"
+import { containerSamples, containers, systemSamples } from "./schema"
 import type { MetricsSource } from "./types"
 
 declare global {
@@ -30,70 +33,58 @@ function insertSystemSample(
   ts: number,
   sys: Awaited<ReturnType<MetricsSource["sampleSystem"]>>
 ) {
-  getDb()
-    .prepare(
-      "INSERT INTO system_samples (ts, cpu_pct, mem_used, mem_total, temp_c, power_w, net_rx, net_tx) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-    )
-    .run(
-      ts,
-      sys.cpuPct,
-      sys.memUsed,
-      sys.memTotal,
-      sys.tempC,
-      sys.powerW,
-      sys.netRx,
-      sys.netTx
-    )
+  getDb().insert(systemSamples).values({ ts, ...sys }).run()
 }
 
 function insertContainerSamples(
   ts: number,
-  containers: Awaited<ReturnType<MetricsSource["sampleContainers"]>>
+  samples: Awaited<ReturnType<MetricsSource["sampleContainers"]>>
 ) {
-  if (containers.length === 0) return
+  if (samples.length === 0) return
   const db = getDb()
-  const insertContainer = db.prepare(
-    "INSERT INTO container_samples (ts, container_id, cpu_pct, mem_used) VALUES (?, ?, ?, ?)"
-  )
-  const upsertContainer = db.prepare(
-    `INSERT INTO containers (id, name, icon, last_seen) VALUES (?, ?, ?, ?)
-     ON CONFLICT(id) DO UPDATE SET name = excluded.name, icon = excluded.icon, last_seen = excluded.last_seen`
-  )
-  db.exec("BEGIN")
-  try {
-    for (const c of containers) {
-      insertContainer.run(ts, c.id, c.cpuPct, c.memUsed)
-      upsertContainer.run(c.id, c.name, c.icon, ts)
+  db.transaction((tx) => {
+    for (const c of samples) {
+      tx.insert(containerSamples)
+        .values({ ts, containerId: c.id, cpuPct: c.cpuPct, memUsed: c.memUsed })
+        .run()
+      tx.insert(containers)
+        .values({ id: c.id, name: c.name, icon: c.icon, lastSeen: ts })
+        .onConflictDoUpdate({
+          target: containers.id,
+          set: { name: c.name, icon: c.icon, lastSeen: ts },
+        })
+        .run()
     }
-    db.exec("COMMIT")
-  } catch (e) {
-    db.exec("ROLLBACK")
-    throw e
-  }
+  })
 }
 
 function prune() {
   const db = getDb()
   const cutoff = Math.floor(Date.now() / 1000) - config.historyDays * 86400
-  db.prepare("DELETE FROM system_samples WHERE ts < ?").run(cutoff)
-  db.prepare("DELETE FROM container_samples WHERE ts < ?").run(cutoff)
-  db.prepare("DELETE FROM containers WHERE last_seen < ?").run(cutoff)
+  db.delete(systemSamples).where(lt(systemSamples.ts, cutoff)).run()
+  db.delete(containerSamples).where(lt(containerSamples.ts, cutoff)).run()
+  db.delete(containers).where(lt(containers.lastSeen, cutoff)).run()
 }
 
 // In demo mode, seed the full retention window on first boot so charts have
 // something to show immediately.
 function backfillDemoHistory() {
   const db = getDb()
-  const row = db.prepare("SELECT COUNT(*) AS n FROM system_samples").get() as {
-    n: number
-  }
-  if (row.n > 0) return
+  const row = db
+    .select({ n: sql<number>`count(*)` })
+    .from(systemSamples)
+    .get()
+  if (row && row.n > 0) return
   const now = Math.floor(Date.now() / 1000)
   const step = Math.max(60, config.pollIntervalSeconds * 4)
-  for (let ts = now - config.historyDays * 86400; ts < now; ts += step) {
-    insertSystemSample(ts, demoSystemAt(ts))
-    insertContainerSamples(ts, demoContainersAt(ts))
-  }
+  // One transaction for the whole window — thousands of individual commits
+  // would thrash the WAL for no reason.
+  db.transaction(() => {
+    for (let ts = now - config.historyDays * 86400; ts < now; ts += step) {
+      insertSystemSample(ts, demoSystemAt(ts))
+      insertContainerSamples(ts, demoContainersAt(ts))
+    }
+  })
 }
 
 export function ensureCollectorStarted() {

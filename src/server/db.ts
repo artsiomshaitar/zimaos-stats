@@ -1,81 +1,43 @@
 import { mkdirSync } from "node:fs"
-import { dirname } from "node:path"
-import { DatabaseSync } from "node:sqlite"
+import { dirname, resolve } from "node:path"
+import { Database } from "bun:sqlite"
+import { sql } from "drizzle-orm"
+import type { BunSQLiteDatabase } from "drizzle-orm/bun-sqlite"
+import { drizzle } from "drizzle-orm/bun-sqlite"
+import { migrate } from "drizzle-orm/bun-sqlite/migrator"
 
 import { config } from "./config"
+import * as schema from "./schema"
 
-const SCHEMA = `
-CREATE TABLE IF NOT EXISTS system_samples (
-  ts INTEGER NOT NULL,
-  cpu_pct REAL,
-  mem_used INTEGER,
-  mem_total INTEGER,
-  temp_c REAL,
-  power_w REAL,
-  net_rx REAL,
-  net_tx REAL
-);
-CREATE INDEX IF NOT EXISTS idx_system_ts ON system_samples (ts);
-
-CREATE TABLE IF NOT EXISTS container_samples (
-  ts INTEGER NOT NULL,
-  container_id TEXT NOT NULL,
-  cpu_pct REAL,
-  mem_used INTEGER
-);
-CREATE INDEX IF NOT EXISTS idx_container_ts ON container_samples (ts);
-CREATE INDEX IF NOT EXISTS idx_container_id_ts ON container_samples (container_id, ts);
-
-CREATE TABLE IF NOT EXISTS containers (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  icon TEXT,
-  last_seen INTEGER NOT NULL
-);
-`
+export type DB = BunSQLiteDatabase<typeof schema>
 
 declare global {
-  var __zimaStatsDb: DatabaseSync | undefined
+  var __zimaStatsDb: DB | undefined
 }
 
-export function getDb(): DatabaseSync {
+export function getDb(): DB {
   if (globalThis.__zimaStatsDb) return globalThis.__zimaStatsDb
+
   mkdirSync(dirname(config.dbPath), { recursive: true })
-  const db = new DatabaseSync(config.dbPath)
-  db.exec("PRAGMA journal_mode = WAL")
-  db.exec("PRAGMA synchronous = NORMAL")
-  db.exec(SCHEMA)
-  addMissingColumns(db)
-  migrateLegacyContainerRows(db)
+  const sqlite = new Database(config.dbPath, { create: true })
+  // WAL + NORMAL is the standard embedded-write profile: concurrent reads,
+  // durable enough, far fewer fsyncs than the default.
+  sqlite.exec("PRAGMA journal_mode = WAL")
+  sqlite.exec("PRAGMA synchronous = NORMAL")
+
+  const db = drizzle(sqlite, { schema })
+  migrate(db, { migrationsFolder: resolve(process.cwd(), "drizzle") })
+  cleanupLegacyContainerRows(db)
+
   globalThis.__zimaStatsDb = db
   return db
 }
 
-// Columns added after the first release; ADD COLUMN on an existing table is a
-// no-op-safe migration (older rows get NULL, which the charts already handle).
-function addMissingColumns(db: DatabaseSync) {
-  const cols = new Set(
-    (
-      db.prepare("PRAGMA table_info(system_samples)").all() as Array<{
-        name: string
-      }>
-    ).map((c) => c.name)
-  )
-  for (const col of ["net_rx", "net_tx"]) {
-    if (!cols.has(col)) {
-      db.exec(`ALTER TABLE system_samples ADD COLUMN ${col} REAL`)
-    }
-  }
-}
-
-// Container samples used to be keyed by 12-hex Docker container ids; they are
-// now keyed by compose-project (app) ids. Drop the old rows so a stale
-// per-container entry (e.g. an app's separate db container) doesn't sit in the
-// list until retention ages it out.
-function migrateLegacyContainerRows(db: DatabaseSync) {
+// Container rows were once keyed by 12-hex Docker container ids; they are now
+// keyed by compose-project (app) ids. Drop any stragglers so a stale per-app
+// db container doesn't linger in the list.
+function cleanupLegacyContainerRows(db: DB) {
   const hexId = "[0-9a-f]".repeat(12)
-  db.prepare(`DELETE FROM containers WHERE id GLOB ?`).run(hexId)
-  db.prepare(`DELETE FROM container_samples WHERE container_id GLOB ?`).run(
-    hexId
-  )
+  db.run(sql`DELETE FROM containers WHERE id GLOB ${hexId}`)
+  db.run(sql`DELETE FROM container_samples WHERE container_id GLOB ${hexId}`)
 }

@@ -1,6 +1,9 @@
+import { and, desc, gte, lte, sql } from "drizzle-orm"
+
 import { collectorMode } from "./collector"
 import { config } from "./config"
 import { getDb } from "./db"
+import { containerSamples, containers, systemSamples } from "./schema"
 
 export interface SystemPoint {
   ts: number
@@ -54,14 +57,13 @@ function bucketSize(
 }
 
 export function getSummary(): Summary {
-  const db = getDb()
-  const latest = db
-    .prepare(
-      `SELECT ts, cpu_pct AS cpuPct, mem_used AS memUsed, mem_total AS memTotal,
-              temp_c AS tempC, power_w AS powerW, net_rx AS netRx, net_tx AS netTx
-       FROM system_samples ORDER BY ts DESC LIMIT 1`
-    )
-    .get() as SystemPoint | undefined
+  const latest =
+    getDb()
+      .select()
+      .from(systemSamples)
+      .orderBy(desc(systemSamples.ts))
+      .limit(1)
+      .get() ?? null
   return {
     mode: collectorMode(),
     version: config.version,
@@ -69,7 +71,7 @@ export function getSummary(): Summary {
     pollIntervalSeconds: config.pollIntervalSeconds,
     containerPollIntervalSeconds: config.containerPollIntervalSeconds,
     historyDays: config.historyDays,
-    latest: latest ?? null,
+    latest,
   }
 }
 
@@ -78,33 +80,24 @@ export function getSystemHistory(
   toSec: number,
   maxPoints = 400
 ): Array<SystemPoint> {
-  const db = getDb()
-  const bucket = bucketSize(
-    fromSec,
-    toSec,
-    maxPoints,
-    config.pollIntervalSeconds
-  )
-  return db
-    .prepare(
-      `SELECT (ts / $bucket) * $bucket AS ts,
-              AVG(cpu_pct) AS cpuPct,
-              AVG(mem_used) AS memUsed,
-              MAX(mem_total) AS memTotal,
-              AVG(temp_c) AS tempC,
-              AVG(power_w) AS powerW,
-              AVG(net_rx) AS netRx,
-              AVG(net_tx) AS netTx
-       FROM system_samples
-       WHERE ts >= $from AND ts <= $to
-       GROUP BY ts / $bucket
-       ORDER BY ts`
-    )
-    .all({
-      $bucket: bucket,
-      $from: fromSec,
-      $to: toSec,
-    } as any) as unknown as Array<SystemPoint>
+  const bucket = bucketSize(fromSec, toSec, maxPoints, config.pollIntervalSeconds)
+  const bucketTs = sql<number>`(${systemSamples.ts} / ${bucket}) * ${bucket}`
+  return getDb()
+    .select({
+      ts: bucketTs,
+      cpuPct: sql<number | null>`avg(${systemSamples.cpuPct})`,
+      memUsed: sql<number | null>`avg(${systemSamples.memUsed})`,
+      memTotal: sql<number | null>`max(${systemSamples.memTotal})`,
+      tempC: sql<number | null>`avg(${systemSamples.tempC})`,
+      powerW: sql<number | null>`avg(${systemSamples.powerW})`,
+      netRx: sql<number | null>`avg(${systemSamples.netRx})`,
+      netTx: sql<number | null>`avg(${systemSamples.netTx})`,
+    })
+    .from(systemSamples)
+    .where(and(gte(systemSamples.ts, fromSec), lte(systemSamples.ts, toSec)))
+    .groupBy(bucketTs)
+    .orderBy(bucketTs)
+    .all()
 }
 
 export function getContainerHistory(
@@ -119,39 +112,33 @@ export function getContainerHistory(
     maxPoints,
     config.containerPollIntervalSeconds
   )
+  const bucketTs = sql<number>`(${containerSamples.ts} / ${bucket}) * ${bucket}`
 
   const rows = db
-    .prepare(
-      `SELECT s.container_id AS id,
-              (s.ts / $bucket) * $bucket AS ts,
-              AVG(s.cpu_pct) AS cpuPct,
-              AVG(s.mem_used) AS memUsed
-       FROM container_samples s
-       WHERE s.ts >= $from AND s.ts <= $to
-       GROUP BY s.container_id, s.ts / $bucket
-       ORDER BY ts`
+    .select({
+      id: containerSamples.containerId,
+      ts: bucketTs,
+      cpuPct: sql<number | null>`avg(${containerSamples.cpuPct})`,
+      memUsed: sql<number | null>`avg(${containerSamples.memUsed})`,
+    })
+    .from(containerSamples)
+    .where(
+      and(gte(containerSamples.ts, fromSec), lte(containerSamples.ts, toSec))
     )
-    .all({
-      $bucket: bucket,
-      $from: fromSec,
-      $to: toSec,
-    } as any) as unknown as Array<{
-    id: string
-    ts: number
-    cpuPct: number | null
-    memUsed: number | null
-  }>
+    .groupBy(containerSamples.containerId, bucketTs)
+    .orderBy(bucketTs)
+    .all()
 
   const meta = new Map(
-    (
-      db
-        .prepare("SELECT id, name, icon FROM containers")
-        .all() as unknown as Array<{
-        id: string
-        name: string
-        icon: string | null
-      }>
-    ).map((m) => [m.id, m])
+    db
+      .select({
+        id: containers.id,
+        name: containers.name,
+        icon: containers.icon,
+      })
+      .from(containers)
+      .all()
+      .map((m) => [m.id, m])
   )
 
   const byId = new Map<string, ContainerSeries>()
