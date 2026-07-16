@@ -30,6 +30,7 @@ review and hit Install.
 | Volumes | host `/DATA/AppData/zimaos-stats` → container `/data` |
 | Volumes | host `/var/run/docker.sock` → container `/var/run/docker.sock` |
 | Volumes | host `/sys/devices/virtual/powercap` → container `/powercap` |
+| Volumes | host `/proc/1/net/dev` → container `/host/proc/net/dev` |
 | Environment variables | optional, see below |
 | Privileges / Memory limit / CPU shares | off / default / Low |
 
@@ -38,7 +39,10 @@ records system metrics. Temperature comes from the host's `/sys` (visible inside
 containers by default). Power needs the `/powercap` volume: Docker masks
 `/sys/devices/virtual/powercap` inside containers as a side-channel mitigation, so the
 host's RAPL counters (Intel CPUs — ZimaBoard/ZimaCube) must be bind-mounted in
-explicitly.
+explicitly. Network needs the `/host/proc/net/dev` volume: `/proc/net/dev` is
+network-namespaced, so a bridge container only sees its own interface. Binding the
+host's PID-1 net file (`/proc/1/net/dev`, tied to the root netns) exposes real host
+throughput.
 
 ## Updating
 
@@ -62,6 +66,7 @@ by editing the Tag field in the app's settings.
 | `PORT` | `3000` | HTTP port inside the container. |
 | `DB_PATH` | `/data/zimaos-stats.db` | SQLite file location (point a volume at `/data`). |
 | `DOCKER_SOCKET` | `/var/run/docker.sock` | Docker socket path for per-app stats. |
+| `NET_DEV_PATH` | *(auto)* | Where to read network counters. Auto-detects `/host/proc/net/dev`; set explicitly if you mount it elsewhere. |
 | `DEVICE_NAME` | *(hostname)* | Display name in the heading and browser tab. Defaults to the hostname you open the app with (`t800.local` → `T800`). |
 | `COLLECTOR_MODE` | `auto` | `auto` / `host` / `demo`. `auto` falls back to demo data when host metrics aren't readable (e.g. developing on macOS). |
 

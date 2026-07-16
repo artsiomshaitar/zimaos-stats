@@ -69,11 +69,32 @@ interface NetTotals {
   tx: number
 }
 
-// Sum rx/tx bytes across real interfaces, skipping loopback and the virtual
-// bridges Docker/libvirt create (they'd double-count container traffic).
-function readNetTotals(): NetTotals | null {
+// /proc/net/dev is network-namespaced, so a bridge-network container only sees
+// its own veth (the dashboard's own traffic). To measure real host throughput
+// the host's copy must be bind-mounted in. NET_DEV_PATH overrides; otherwise we
+// prefer a host mount and fall back to the container's own (near-zero) view.
+const NET_DEV_CANDIDATES = [
+  process.env.NET_DEV_PATH,
+  "/host/proc/net/dev",
+  "/host/net/dev",
+  "/proc/net/dev",
+].filter((p) => p != null)
+
+function findNetDevPath(): string | null {
+  for (const path of NET_DEV_CANDIDATES) {
+    try {
+      readFileSync(path, "utf8")
+      return path
+    } catch {
+      continue
+    }
+  }
+  return null
+}
+
+function parseNetTotals(path: string): NetTotals | null {
   try {
-    const lines = readFileSync("/proc/net/dev", "utf8").split("\n").slice(2)
+    const lines = readFileSync(path, "utf8").split("\n").slice(2)
     let rx = 0
     let tx = 0
     let seen = false
@@ -201,6 +222,7 @@ export class HostMetricsSource implements MetricsSource {
   private tempPath = findTempPath()
   private rapl = findRaplDomains()
   private lastRaplReadMs: number | null = null
+  private netDevPath = findNetDevPath()
   private lastNet: NetTotals | null = null
   private lastNetReadMs: number | null = null
 
@@ -254,7 +276,7 @@ export class HostMetricsSource implements MetricsSource {
     // Network: byte-counter delta across physical interfaces
     let netRx: number | null = null
     let netTx: number | null = null
-    const net = readNetTotals()
+    const net = this.netDevPath ? parseNetTotals(this.netDevPath) : null
     if (net) {
       const nowMs = Date.now()
       if (this.lastNet && this.lastNetReadMs !== null && nowMs > this.lastNetReadMs) {

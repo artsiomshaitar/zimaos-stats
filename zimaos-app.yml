@@ -29,6 +29,10 @@ services:
         source: /sys/devices/virtual/powercap
         target: /powercap
         read_only: true
+      - type: bind
+        source: /proc/1/net/dev
+        target: /host/proc/net/dev
+        read_only: true
     x-casaos:
       envs:
         - container: HISTORY_DAYS
@@ -57,6 +61,9 @@ services:
         - container: /powercap
           description:
             en_us: Host power sensors (Docker masks RAPL by default)
+        - container: /host/proc/net/dev
+          description:
+            en_us: Host network counters (namespaced away from bridge containers)
 x-casaos:
   architectures:
     - amd64

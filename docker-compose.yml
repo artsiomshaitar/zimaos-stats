@@ -17,3 +17,7 @@ services:
       # Host power sensors — Docker masks /sys/devices/virtual/powercap inside
       # containers, so bind it to /powercap for wattage readings (Linux hosts)
       - /sys/devices/virtual/powercap:/powercap:ro
+      # Host network counters — /proc/net/dev is network-namespaced, so a bridge
+      # container only sees its own veth. Host PID 1's net file is tied to the
+      # root netns, so binding it in exposes real host throughput.
+      - /proc/1/net/dev:/host/proc/net/dev:ro
