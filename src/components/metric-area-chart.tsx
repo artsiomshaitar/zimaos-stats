@@ -86,20 +86,24 @@ export function MetricAreaChart({
           content={
             <ChartTooltipContent
               indicator="line"
-              labelFormatter={(_, payload) =>
-                formatTooltipTime(
-                  Number((payload[0]?.payload as { ts: number }).ts)
-                )
-              }
-              formatter={(v) => (
-                <div className="flex flex-1 items-center justify-between gap-3">
-                  <span className="flex items-center gap-1.5 text-muted-foreground">
-                    {Icon && <Icon className="size-3.5" aria-hidden />}
-                    {label}
-                  </span>
-                  <span className="font-mono font-medium text-foreground tabular-nums">
-                    {formatValue(Number(v))}
-                  </span>
+              // Single-series + custom formatter means ChartTooltipContent
+              // never renders its label, so the timestamp lives in here.
+              formatter={(v, _name, _item, _index, p) => (
+                <div className="flex flex-1 flex-col gap-1.5">
+                  <div className="font-medium">
+                    {formatTooltipTime(
+                      Number((p as unknown as { ts: number }).ts)
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      {Icon && <Icon className="size-3.5" aria-hidden />}
+                      {label}
+                    </span>
+                    <span className="font-mono font-medium text-foreground tabular-nums">
+                      {formatValue(Number(v))}
+                    </span>
+                  </div>
                 </div>
               )}
             />
@@ -109,7 +113,7 @@ export function MetricAreaChart({
           dataKey="value"
           type="monotone"
           stroke="var(--color-value)"
-          strokeWidth={2}
+          strokeWidth={1.5}
           fill="var(--color-value)"
           fillOpacity={0.1}
           dot={false}

@@ -73,6 +73,17 @@ by editing the Tag field in the app's settings.
 Storage footprint: system samples at 2s for 7 days are ~300k rows, plus ~40k rows per
 app at 15s — a few tens of MB. SQLite (WAL mode) handles this without noticing.
 
+The image copies a prebuilt `dist/`, so build the client first:
+
+```sh
+bun install && bun run build
+docker build -t ghcr.io/<you>/zimaos-stats:latest .
+```
+
+(The GitHub Actions workflow does this automatically — it runs `bun run build` on the
+runner before the Docker build. The SPA shell prerender needs a loopback server that
+Docker BuildKit's sandbox blocks, which is why the build happens outside the image.)
+
 ## Publishing your own image (ghcr.io)
 
 1. Push this repo to GitHub.
@@ -102,24 +113,32 @@ docker compose up -d
 ```sh
 bun install
 bun run dev         # http://localhost:3000 — uses demo data on macOS
-bun run build       # production build
-bun run start       # serve the production build (bun serve.mjs)
+bun run build       # production build (client SPA + prerendered shell)
+bun run start       # serve the production build (bun --smol serve.ts)
 bun run db:generate # regenerate Drizzle migrations after editing the schema
 ```
 
-Runs on **Bun** (uses the built-in `bun:sqlite`, so no native modules).
+Runs on **Bun** (built-in `bun:sqlite`, so no native modules).
 
 ## How it works
 
-- `src/server/collector.ts` runs inside the web server process from boot (started by the
-  custom TanStack Start entry `src/server.ts`), sampling every `POLL_INTERVAL_SECONDS`:
+The app is a client-rendered SPA with a deliberately tiny server, so its idle footprint
+stays low (~40–70 MB) — the heavy React/chart rendering happens in the browser, not the
+container.
+
+- **Server** (`serve.ts`, run with `bun --smol serve.ts`): starts the collector, answers
+  `/api/*` data calls straight from Drizzle, and serves the prerendered client shell for
+  everything else. It never loads React or an SSR runtime.
+- **Collector** (`src/server/collector.ts`) runs from boot, sampling every
+  `POLL_INTERVAL_SECONDS`:
   - CPU: `/proc/stat` deltas · RAM: `/proc/meminfo`
   - Temperature: best thermal zone in `/sys/class/thermal` (falls back to hwmon)
   - Power: Intel RAPL energy counters in `/sys/class/powercap`
   - Network: `/proc/net/dev` byte-counter deltas across physical interfaces
   - Per-app: Docker API one-shot stats over the socket, CPU% computed from deltas
-- Storage is SQLite via **Drizzle ORM** (`drizzle-orm/bun-sqlite`). The schema lives in
-  `src/server/schema.ts`; migrations in `drizzle/` are applied on startup. WAL mode; an
-  hourly job prunes rows older than `HISTORY_DAYS`.
-- The dashboard (TanStack Start + shadcn + Recharts) queries bucketed averages via
-  server functions and refreshes on the selected range's cadence.
+- **Storage** is SQLite via **Drizzle ORM** (`drizzle-orm/bun-sqlite`). Schema in
+  `src/server/schema.ts`; migrations in `drizzle/` applied on startup. WAL mode; an hourly
+  job prunes rows older than `HISTORY_DAYS`.
+- **Client** (TanStack Start in SPA mode + shadcn + Recharts): the dashboard is a
+  client-only lazy route that polls the `/api` endpoints for bucketed averages and
+  refreshes on the selected range's cadence.

@@ -1,6 +1,6 @@
 {
   "name": "zimaos-stats",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,7 +12,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx}\"",
     "check": "prettier --check \"**/*.{ts,tsx,js,jsx}\"",
     "typecheck": "tsc --noEmit",
-    "start": "bun serve.mjs",
+    "start": "bun --smol serve.ts",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {

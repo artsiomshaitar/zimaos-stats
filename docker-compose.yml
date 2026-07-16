@@ -1,6 +1,7 @@
 services:
   zimaos-stats:
-    image: ghcr.io/artsiomshaitar/zimaos-stats:latest # or use `build: .`
+    # `build: .` requires `bun run build` first (the image copies a prebuilt dist/)
+    image: ghcr.io/artsiomshaitar/zimaos-stats:latest
     container_name: zimaos-stats
     restart: unless-stopped
     ports:

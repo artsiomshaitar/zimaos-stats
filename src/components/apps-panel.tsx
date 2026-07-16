@@ -280,7 +280,7 @@ export const AppsPanel = memo(function AppsPanel({
                     dataKey={s.id}
                     type="monotone"
                     stroke={`var(--color-${s.id})`}
-                    strokeWidth={dimActive && s.id === hoveredId ? 2.5 : 2}
+                    strokeWidth={dimActive && s.id === hoveredId ? 2 : 1.5}
                     strokeOpacity={lineOpacity(s.id)}
                     dot={false}
                     activeDot={{ r: 4 }}
